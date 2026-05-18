@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
@@ -13,7 +14,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: '단순 위치 확인',
+      title: '단순 위치 확인 (지도 포함)',
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
@@ -31,64 +32,85 @@ class LocationScreen extends StatefulWidget {
 }
 
 class _LocationScreenState extends State<LocationScreen> {
-  // 1. 상태 변수 설정
+  // 상태 변수
   String _selectedDevice = 'computer';
   String _address = '결과 대기 중...';
   String _zipcode = '결과 대기 중...';
   bool _isLoading = false;
 
-  // Google Maps API Key
+  GoogleMapController? _mapController;
+  LatLng _currentLatLng = const LatLng(37.5665, 126.9780); // 서울 시청
+  Set<Marker> _markers = {};
+
   final String _googleMapsApiKey = 'YOUR_GOOGLE_MAPS_API_KEY';
 
-  /**
-   * [단계별 설명]
-   * 1. 위치 권한 확인 및 요청: 기기의 GPS 접근 권한이 있는지 확인하고 없으면 요청합니다.
-   * 2. 현재 좌표 수집: Geolocator를 이용해 위도, 경도를 가져옵니다.
-   * 3. Reverse Geocoding 호출: Google API를 통해 좌표를 주소로 변환합니다.
-   * 4. 결과 업데이트: 화면에 주소와 우편번호를 표시합니다.
-   */
-  Future<void> _getCurrentLocation() async {
-    setState(() {
-      _isLoading = true;
-      _address = '위치 찾는 중...';
-      _zipcode = '위치 찾는 중...';
-    });
+  @override
+  void initState() {
+    super.initState();
+    _markers.add(
+      Marker(
+        markerId: const MarkerId('selected'),
+        position: _currentLatLng,
+        draggable: true,
+        onDragEnd: (newPosition) {
+          _currentLatLng = newPosition;
+        },
+      ),
+    );
+  }
 
+  void _onMapTap(LatLng latLng) {
+    setState(() {
+      _currentLatLng = latLng;
+      _markers = {
+        Marker(
+          markerId: const MarkerId('selected'),
+          position: latLng,
+        ),
+      };
+    });
+  }
+
+  Future<void> _handleButtonClick() async {
+    // 1. 현재 위치 버튼을 눌렀을 때, 사용자가 지도를 직접 클릭하지 않았다면 현재 GPS 수집
+    if (_markers.isEmpty || _markers.first.position == const LatLng(37.5665, 126.9780)) {
+       await _getCurrentGPSLocation();
+    }
+
+    // 2. 최종 결정된 좌표(_currentLatLng)로 주소 변환 수행
+    await _reverseGeocode(_currentLatLng.latitude, _currentLatLng.longitude);
+  }
+
+  Future<void> _getCurrentGPSLocation() async {
+    setState(() { _isLoading = true; });
     try {
-      // 1. 권한 체크
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          throw '위치 권한이 거부되었습니다.';
-        }
       }
 
-      if (permission == LocationPermission.deniedForever) {
-        throw '위치 권한이 영구적으로 거부되었습니다. 설정에서 변경해주세요.';
-      }
+      Position position = await Geolocator.getCurrentPosition();
+      LatLng newLatLng = LatLng(position.latitude, position.longitude);
 
-      // 2. 좌표 수집
-      Position position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-      );
+      setState(() {
+        _currentLatLng = newLatLng;
+        _markers = { Marker(markerId: const MarkerId('selected'), position: newLatLng) };
+      });
 
-      // 3. 주소 변환 (Reverse Geocoding)
-      await _reverseGeocode(position.latitude, position.longitude);
-
+      _mapController?.animateCamera(CameraUpdate.newLatLng(newLatLng));
     } catch (e) {
-      setState(() {
-        _address = '오류: $e';
-        _zipcode = '-';
-      });
+      print(e);
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() { _isLoading = false; });
     }
   }
 
   Future<void> _reverseGeocode(double lat, double lng) async {
+    setState(() {
+      _address = '주소 변환 중...';
+      _zipcode = '...';
+    });
+
     final url = Uri.parse(
       'https://maps.googleapis.com/maps/api/geocode/json?latlng=$lat,$lng&key=$_googleMapsApiKey&language=ko',
     );
@@ -115,14 +137,7 @@ class _LocationScreenState extends State<LocationScreen> {
           _address = formattedAddress;
           _zipcode = postalCode;
         });
-      } else {
-        setState(() {
-          _address = '주소를 찾을 수 없습니다. (${data['status']})';
-          _zipcode = '-';
-        });
       }
-    } else {
-      throw 'API 호출 실패';
     }
   }
 
@@ -130,102 +145,69 @@ class _LocationScreenState extends State<LocationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // 1. 기기 선택 (라디오 버튼 형태)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          children: [
+            // 상단 UI 영역
+            Container(
+              padding: const EdgeInsets.all(16),
+              color: Colors.white,
+              child: Column(
                 children: [
-                  Radio<String>(
-                    value: 'computer',
-                    groupValue: _selectedDevice,
-                    onChanged: (value) {
-                      setState(() => _selectedDevice = value!);
-                    },
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Radio<String>(
+                        value: 'computer',
+                        groupValue: _selectedDevice,
+                        onChanged: (v) => setState(() => _selectedDevice = v!),
+                      ),
+                      const Text('컴퓨터 위치'),
+                      const SizedBox(width: 20),
+                      Radio<String>(
+                        value: 'mobile',
+                        groupValue: _selectedDevice,
+                        onChanged: (v) => setState(() => _selectedDevice = v!),
+                      ),
+                      const Text('휴대폰 위치'),
+                    ],
                   ),
-                  const Text('컴퓨터 위치'),
-                  const SizedBox(width: 20),
-                  Radio<String>(
-                    value: 'mobile',
-                    groupValue: _selectedDevice,
-                    onChanged: (value) {
-                      setState(() => _selectedDevice = value!);
-                    },
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 60,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _handleButtonClick,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('현재 위치 확인할까요?', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                    ),
                   ),
-                  const Text('휴대폰 위치'),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Expanded(child: Text('도로명 주소: $_address', style: const TextStyle(fontSize: 13))),
+                      Text('우편번호: $_zipcode', style: const TextStyle(fontSize: 13)),
+                    ],
+                  ),
                 ],
               ),
-              const SizedBox(height: 40),
+            ),
 
-              // 2. 확인 버튼
-              SizedBox(
-                width: double.infinity,
-                height: 80,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _getCurrentLocation,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(40),
-                    ),
-                    elevation: 5,
-                  ),
-                  child: _isLoading
-                    ? const CircularProgressIndicator(color: Colors.white)
-                    : const Text(
-                        '현재 위치 확인할까요?',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                ),
+            // 하단 지도 영역
+            Expanded(
+              child: GoogleMap(
+                initialCameraPosition: CameraPosition(target: _currentLatLng, zoom: 15),
+                onMapCreated: (controller) => _mapController = controller,
+                markers: _markers,
+                onTap: _onMapTap,
+                myLocationEnabled: true,
+                myLocationButtonEnabled: true,
               ),
-              const SizedBox(height: 40),
-
-              // 3. 결과 표시
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.grey[300]!),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    RichText(
-                      text: TextSpan(
-                        style: const TextStyle(fontSize: 18, color: Colors.black87),
-                        children: [
-                          const TextSpan(
-                            text: '도로명 주소: ',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
-                          ),
-                          TextSpan(text: _address),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 15),
-                    RichText(
-                      text: TextSpan(
-                        style: const TextStyle(fontSize: 18, color: Colors.black87),
-                        children: [
-                          const TextSpan(
-                            text: '우편번호: ',
-                            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black54),
-                          ),
-                          TextSpan(text: _zipcode),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

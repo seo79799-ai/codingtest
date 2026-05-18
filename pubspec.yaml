@@ -8,8 +8,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  geolocator: ^10.1.0 # 1. 위치 정보 수집을 위한 패키지
-  http: ^1.1.0       # 2. Google Maps API 호출을 위한 패키지
+  geolocator: ^10.1.0
+  http: ^1.1.0
+  google_maps_flutter: ^2.5.0 # 구글 맵 표시를 위한 패키지 추가
 
 dev_dependencies:
   flutter_test:
