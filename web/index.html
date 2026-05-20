@@ -11,7 +11,7 @@
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
             background-color: #f4f4f9;
         }
@@ -22,7 +22,18 @@
             border-radius: 15px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             width: 90%;
-            max-width: 400px;
+            max-width: 500px;
+            position: relative;
+        }
+        .menu-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #333;
         }
         .device-selector {
             margin-bottom: 2rem;
@@ -48,26 +59,75 @@
         #check-btn:hover {
             background-color: #45a049;
         }
-        #check-btn:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
         .result-area {
+            display: flex;
+            background: #eee;
+            padding: 15px;
+            border-radius: 10px;
             text-align: left;
-            font-size: 1.2rem;
-            line-height: 1.8;
+            margin-bottom: 1rem;
         }
-        .result-item {
-            margin-bottom: 10px;
-        }
-        .label {
+        .zip-box {
+            flex: 0 0 80px;
+            border-right: 1px solid #ccc;
+            padding-right: 10px;
+            margin-right: 10px;
             font-weight: bold;
         }
+        .addr-box {
+            flex: 1;
+        }
+        .share-btn {
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        /* Modal styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            overflow-y: auto;
+        }
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            text-align: left;
+        }
+        .close {
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .section {
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        h3 { color: #2c3e50; }
+        .emergency-box { background: #ffebee; padding: 10px; border-radius: 5px; }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <button class="menu-btn" onclick="openModal()">☰</button>
+
     <div class="device-selector">
         <input type="radio" id="computer" name="device" value="computer" checked>
         <label for="computer">컴퓨터 위치</label>
@@ -78,20 +138,56 @@
     <button id="check-btn">현재 위치 확인할까요?</button>
 
     <div class="result-area">
-        <div class="result-item">
-            <span class="label">도로명 주소:</span> <span id="address">-</span>
+        <div class="zip-box">
+            <div style="font-size: 0.8rem; color: #666;">우편번호</div>
+            <div id="zipcode">-</div>
         </div>
-        <div class="result-item">
-            <span class="label">우편번호:</span> <span id="zipcode">-</span>
+        <div class="addr-box">
+            <div style="font-size: 0.8rem; color: #666;">도로명 주소</div>
+            <div id="address">-</div>
+        </div>
+    </div>
+
+    <button class="share-btn" onclick="shareAddress()">위치 공유하기</button>
+</div>
+
+<!-- Extra Content Modal -->
+<div id="extraModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal()">&times;</span>
+
+        <div class="section">
+            <h3>📖 도로명 주소의 역사와 문화</h3>
+            <p>도로명은 지역의 지명, 역사성, 특성 등을 반영하여 지어집니다.
+            예를 들어, 돈의문 근처의 '새문안로'는 돈의문(신문/새문) 안쪽 길이라는 역사적 의미를 담고 있습니다.</p>
+            <p><strong>도로의 위계:</strong>
+            - <strong>대로(大路):</strong> 도로 폭 40m 또는 8차로 이상의 주요 간선도로
+            - <strong>로(路):</strong> 도로 폭 12m~40m 또는 2~7차로인 주요 도로
+            - <strong>길:</strong> '대로'와 '로' 외의 모든 소규모 도로</p>
+        </div>
+
+        <div class="section">
+            <h3>🚨 안전 및 응급 상황 대처</h3>
+            <div class="emergency-box">
+                <p><strong>정확한 위치 신고:</strong> 건물이 없는 산악/해안 등에서는 '국가지점번호'를 확인하여 119에 신고하세요.</p>
+                <p>📞 <strong>응급 전화:</strong> 119 (소방/구조), 112 (경찰), 129 (보건복지콜센터)</p>
+                <p>🏥 <strong>가까운 응급실 찾기:</strong> 보건복지부 응급의료정보제공 앱(E-Gen) 활용 권장</p>
+            </div>
+        </div>
+
+        <div id="restaurant-section" class="section">
+            <h3>🍴 주변 맛집 정보</h3>
+            <p id="restaurant-info">위치를 먼저 확인해 주세요.</p>
+            <button id="search-food" onclick="searchNearbyFood()">네이버 지도로 맛집 검색</button>
         </div>
     </div>
 </div>
 
 <script>
-    // 1단계: Google Maps API 키 설정
     const API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+    let geocoder;
+    let currentAddr = "";
 
-    // Google Maps JS SDK를 동적으로 로드 (CORS 이슈 방지)
     (function loadGoogleMaps() {
         const script = document.createElement('script');
         script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&callback=initService&libraries=geocoding&language=ko`;
@@ -99,8 +195,6 @@
         script.defer = true;
         document.head.appendChild(script);
     })();
-
-    let geocoder;
 
     window.initService = function() {
         geocoder = new google.maps.Geocoder();
@@ -118,19 +212,15 @@
 
     function getCurrentLocation() {
         if (!navigator.geolocation) {
-            alert("이 브라우저에서는 위치 서비스를 지원하지 않습니다.");
+            alert("위치 서비스를 지원하지 않습니다.");
             return;
         }
-
         checkBtn.disabled = true;
         checkBtn.textContent = "위치 확인 중...";
 
         navigator.geolocation.getCurrentPosition(
             (position) => {
-                const latlng = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
+                const latlng = { lat: position.coords.latitude, lng: position.coords.longitude };
                 reverseGeocode(latlng);
             },
             (error) => {
@@ -143,32 +233,51 @@
 
     function reverseGeocode(latlng) {
         if (!geocoder) {
-            alert("Google Maps 서비스가 아직 로드되지 않았습니다.");
+            alert("서비스가 준비되지 않았습니다.");
             resetButton();
             return;
         }
-
         geocoder.geocode({ location: latlng }, (results, status) => {
-            if (status === "OK") {
-                if (results[0]) {
-                    const result = results[0];
-                    addressEl.textContent = result.formatted_address;
+            if (status === "OK" && results[0]) {
+                const result = results[0];
+                currentAddr = result.formatted_address;
+                addressEl.textContent = currentAddr;
 
-                    const postCodeObj = result.address_components.find(comp => comp.types.includes('postal_code'));
-                    zipcodeEl.textContent = postCodeObj ? postCodeObj.long_name : "정보 없음";
-                } else {
-                    alert("결과를 찾을 수 없습니다.");
-                }
+                const postCodeObj = result.address_components.find(comp => comp.types.includes('postal_code'));
+                zipcodeEl.textContent = postCodeObj ? postCodeObj.long_name : "정보 없음";
+
+                document.getElementById('restaurant-info').textContent = "현재 위치: " + currentAddr;
             } else {
-                alert("주소 변환 실패: " + status);
+                alert("주소 변환 실패");
             }
             resetButton();
         });
     }
 
-    function resetButton() {
-        checkBtn.disabled = false;
-        checkBtn.textContent = "현재 위치 확인할까요?";
+    function shareAddress() {
+        if (!currentAddr) { alert("먼저 위치를 확인해 주세요."); return; }
+        if (navigator.share) {
+            navigator.share({
+                title: '나의 현재 위치',
+                text: `나의 현재 위치: ${currentAddr} (우편번호: ${zipcodeEl.textContent})`,
+                url: window.location.href
+            });
+        } else {
+            alert("공유하기를 지원하지 않는 브라우저입니다. 주소를 복사해 주세요: " + currentAddr);
+        }
+    }
+
+    function searchNearbyFood() {
+        if (!currentAddr) { alert("먼저 위치를 확인해 주세요."); return; }
+        window.open(`https://map.naver.com/v5/search/${encodeURIComponent(currentAddr + ' 맛집')}`, '_blank');
+    }
+
+    function openModal() { document.getElementById('extraModal').style.display = "block"; }
+    function closeModal() { document.getElementById('extraModal').style.display = "none"; }
+    function resetButton() { checkBtn.disabled = false; checkBtn.textContent = "현재 위치 확인할까요?"; }
+
+    window.onclick = function(event) {
+        if (event.target == document.getElementById('extraModal')) closeModal();
     }
 </script>
 

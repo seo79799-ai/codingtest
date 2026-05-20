@@ -1,0 +1,6 @@
+total 224
+drwxrwxr-x 2 jules jules  4096 May 20 13:24 .
+drwxrwxr-x 4 jules jules  4096 May 20 13:24 ..
+-rw-rw-r-- 1 jules jules 59079 May 19 22:26 0792755f63d07de2e43d64e7761ad098.webm
+-rw-rw-r-- 1 jules jules 60111 May 19 22:27 88240ae1cf53fc137370a0f87f32dc3c.webm
+-rw-rw-r-- 1 jules jules 97510 May 20 13:24 f5e217d5b4017bf8e887b8a46f816447.webm
