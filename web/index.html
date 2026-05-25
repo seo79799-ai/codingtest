@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>위치 정보 확인 서비스</title>
+    <style>
+        body {
+            font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f8f9fa;
+        }
+        .container {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 400px;
+        }
+        .device-selection {
+            margin-bottom: 20px;
+        }
+        .check-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+            margin-bottom: 20px;
+        }
+        .check-button:active {
+            transform: scale(0.95);
+            background-color: #0056b3;
+        }
+        .result-area {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .result-item {
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+    <!-- Google Maps JS SDK 로드 (CORS 문제 해결을 위해 SDK 사용 권장) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places"></script>
+</head>
+<body>
+
+<div class="container">
+    <!-- 단계 1: 기기 선택 UI -->
+    <div class="device-selection">
+        <label>
+            <input type="radio" name="device" value="Computer" checked> 컴퓨터 위치
+        </label>
+        <label style="margin-left: 15px;">
+            <input type="radio" name="device" value="Mobile"> 휴대폰 위치
+        </label>
+    </div>
+
+    <!-- 단계 2: 확인 버튼 -->
+    <button class="check-button" onclick="getLocation()">현재 위치 확인할까요?</button>
+
+    <!-- 단계 3: 결과 표시 영역 -->
+    <div class="result-area" id="resultArea">
+        <p id="address">도로명 주소: </p>
+        <p id="postcode">우편번호: </p>
+    </div>
+</div>
+
+<script>
+    /**
+     * 사용자의 현재 위치 좌표를 가져오는 함수
+     */
+    function getLocation() {
+        // 위치 정보법 준수: 브라우저 기본 팝업을 통해 사용자 권한 요청
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(success, error, {
+                enableHighAccuracy: true,
+                timeout: 5000,
+                maximumAge: 0
+            });
+        } else {
+            alert("이 브라우저에서는 위치 정보 기능을 지원하지 않습니다.");
+        }
+    }
+
+    /**
+     * 위치 좌표 획득 성공 시 실행되는 콜백
+     */
+    function success(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const deviceType = document.querySelector('input[name="device"]:checked').value;
+
+        // 단계 4: Google Maps Geocoder SDK를 사용한 Reverse Geocoding
+        // 웹 브라우저에서 직접 API를 호출할 경우 CORS 오류가 발생할 수 있으므로 SDK 사용이 필수적입니다.
+        const geocoder = new google.maps.Geocoder();
+        const latlng = { lat: lat, lng: lng };
+
+        geocoder.geocode({ location: latlng, language: 'ko' }, (results, status) => {
+            if (status === "OK") {
+                if (results[0]) {
+                    let roadAddress = results[0].formatted_address;
+                    let postcode = "정보 없음";
+
+                    // 우편번호(postal_code) 찾기
+                    const postComponent = results[0].address_components.find(c => c.types.includes("postal_code"));
+                    if (postComponent) {
+                        postcode = postComponent.long_name;
+                    }
+
+                    // 기기 선택에 따른 접두사 추가
+                    const prefix = `[${deviceType}] `;
+
+                    // 화면에 결과 표시
+                    document.getElementById('address').innerHTML = `<span class="result-item">도로명 주소:</span> ${prefix}${roadAddress}`;
+                    document.getElementById('postcode').innerHTML = `<span class="result-item">우편번호:</span> ${postcode}`;
+                } else {
+                    alert("결과를 찾을 수 없습니다.");
+                }
+            } else {
+                alert("Geocoder 실패: " + status);
+            }
+        });
+    }
+
+    /**
+     * 위치 좌표 획득 실패 시 실행되는 콜백
+     */
+    function error() {
+        alert("위치 정보를 가져올 수 없습니다. 권한을 허용했는지 확인해 주세요.");
+    }
+</script>
+
+</body>
+</html>
