@@ -147,8 +147,8 @@ class Enemy(Entity):
             collider='box'
         )
         # 적 모델링
-        Entity(parent=self, model='cube', color=color.maroon, scale=(4, 0.1, 1), position=(0,0,0.3)) # 날개
-        Entity(parent=self, model='cube', color=color.maroon, scale=(0.1, 0.8, 0.5), position=(0,0.4,-1.4)) # 꼬리
+        Entity(parent=self, model='cube', color=color.brown, scale=(4, 0.1, 1), position=(0,0,0.3)) # 날개
+        Entity(parent=self, model='cube', color=color.brown, scale=(0.1, 0.8, 0.5), position=(0,0.4,-1.4)) # 꼬리
 
         # HUD 마커 (내장 텍스처 circle 사용)
         self.marker = Entity(model='quad', texture='circle', color=color.red, scale=1.5, billboard=True)
