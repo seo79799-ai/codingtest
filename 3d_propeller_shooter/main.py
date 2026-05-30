@@ -33,6 +33,7 @@ water = Entity(model='plane', color=color.azure, scale=5000, position=(0,-55,0))
 # 전역 변수
 score = 0
 score_text = Text(text=f'Score: {score}', position=(-0.85, 0.40), scale=2, color=color.yellow)
+enemy_count_text = Text(text='Enemies: 0', position=(0, 0.45), origin=(0,0), scale=2, color=color.red)
 
 # UI 요소: 레이더 (좌측 하단)
 radar_base = Entity(parent=camera.ui, model='circle', color=color.black66, scale=0.2, position=(-0.7, -0.35))
@@ -86,8 +87,8 @@ class Player(Entity):
         camera.rotation_x = 12
 
         # 타겟 포인터 (적 추적 화살표 - UI)
-        self.pointer = Entity(parent=camera.ui, model='arrow', color=color.orange, scale=0.05, position=(0, 0.2))
-        self.target_dist_text = Text(parent=camera.ui, text='', position=(0, 0.15), origin=(0,0), scale=1, color=color.orange)
+        self.pointer = Entity(parent=camera.ui, model='arrow', color=color.orange, scale=0.1, position=(0, 0.25))
+        self.target_dist_text = Text(parent=camera.ui, text='', position=(0, 0.2), origin=(0,0), scale=1.5, color=color.orange)
 
         # 3D 추적기 (플레이어 기체 근처에서 적을 가리키는 화살표)
         self.tracker_3d = Entity(parent=self, model='arrow', color=color.yellow, scale=0.5, position=(0, 1.5, 2))
@@ -95,11 +96,14 @@ class Player(Entity):
         mouse.locked = True
 
     def update(self):
+        # 적 대수 업데이트
+        active_enemies = [e for e in enemies if e and e.enabled]
+        enemy_count_text.text = f'Enemies: {len(active_enemies)}'
+
         # 가장 가까운 적 찾기
         nearest_enemy = None
         min_dist = float('inf')
-        for e in enemies:
-            if e and not e.enabled: continue # 이미 파괴된 경우 제외
+        for e in active_enemies:
             d = (e.world_position - self.world_position).length()
             if d < min_dist:
                 min_dist = d
@@ -331,10 +335,12 @@ help_panel = WindowPanel(
         Text('- 마우스: 비행기 회전 (Pitch/Yaw)'),
         Text('- 왼쪽 클릭: 기관총 사격'),
         Text('- W 키: 부스트 가속'),
-        Text('- B 키: 배경 테마 변경'),
+        Text('- B 키: 배경 테마 변경 (순환됨)'),
+        Text('  * 원래대로(낮) 돌리려면 B키를 여러번 누르세요.'),
         Text('- ESC 키: 게임 종료'),
         Text(''),
         Text('목표: 적 비행기를 격추하여 점수를 획득하세요!'),
+        Text('화면의 큰 화살표가 가장 가까운 적의 방향과 거리를 알려줍니다.'),
         Button(text='닫기', color=color.azure, on_click=lambda: setattr(help_panel, 'enabled', False))
     ),
     enabled=False,
