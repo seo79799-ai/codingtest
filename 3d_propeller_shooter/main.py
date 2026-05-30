@@ -36,9 +36,11 @@ score_text = Text(text=f'Score: {score}', position=(-0.85, 0.40), scale=2, color
 enemy_count_text = Text(text='Enemies: 0', position=(0, 0.45), origin=(0,0), scale=2, color=color.red)
 
 game_state = 'WAITING' # WAITING, PLAYING, WIN, LOSE
+difficulty = 1 # 1~10 단계
 timer = 60
 timer_text = Text(text='', position=(0, 0.4), origin=(0,0), scale=2, color=color.white)
-status_message = Text(text='SPACE 키를 눌러 적기를 호출하세요!', position=(0, 0), origin=(0,0), scale=2, color=color.yellow)
+status_message = Text(text='SPACE 키를 눌러 적기를 호출하세요!', position=(0, 0.1), origin=(0,0), scale=2, color=color.yellow)
+diff_text = Text(text=f'Difficulty: {difficulty}', position=(0.85, 0.40), scale=1.5, color=color.lime)
 
 # UI 요소: 레이더 (좌측 하단)
 radar_base = Entity(parent=camera.ui, model='circle', color=color.black66, scale=0.2, position=(-0.7, -0.35))
@@ -91,9 +93,13 @@ class Player(Entity):
         camera.position = (0, 4, -12)
         camera.rotation_x = 12
 
-        # 조준선 (Crosshair / Reticle)
-        self.reticle = Entity(parent=camera.ui, model='circle', color=color.lime, scale=0.025, mode='line')
-        self.reticle_outer = Entity(parent=camera.ui, model='circle', color=color.lime, scale=0.05, mode='line')
+        # 조준선 (검정색 그물망 스타일)
+        self.reticle_base = Entity(parent=camera.ui, model='quad', color=color.black, scale=0.2, alpha=0.1) # 배경 살짝
+        # 십자선 그물망 (간격 넓게)
+        self.grid_h = Entity(parent=camera.ui, model='quad', color=color.black, scale=(0.3, 0.002), position=(0,0))
+        self.grid_v = Entity(parent=camera.ui, model='quad', color=color.black, scale=(0.002, 0.3), position=(0,0))
+        # 큰 원형 가이드
+        self.reticle_circle = Entity(parent=camera.ui, model='circle', color=color.black, scale=0.25, mode='line', thickness=2)
 
         # 타겟 포인터 (적 추적 화살표 - UI)
         self.pointer = Entity(parent=camera.ui, model='arrow', color=color.orange, scale=0.08, position=(0, 0.35))
@@ -246,10 +252,20 @@ class Enemy(Entity):
         self.offset = Vec3(0,0,0) # 조준 방해를 위한 미세 움직임 값
 
     def update(self):
-        # 플레이어의 전방 위치를 따라가면서 미세하게 회피
+        global difficulty
+        # 플레이어의 전방 위치를 따라가면서 난이도에 따라 회피
         self.evade_timer += time.dt
-        if self.evade_timer > 0.5: # 0.5초마다 회피 방향 미세 조정
-            self.offset = Vec3(random.uniform(-15, 15), random.uniform(-10, 10), 0)
+
+        # 난이도에 따른 회피 빈도 및 강도 조절 (1단계는 거의 고정, 10단계는 급격함)
+        update_interval = max(0.1, 1.5 - (difficulty * 0.14)) # 단계가 높을수록 자주 방향 바꿈
+        evade_range = difficulty * 3.5 # 단계가 높을수록 더 넓게 움직임
+
+        if self.evade_timer > update_interval:
+            self.offset = Vec3(
+                random.uniform(-evade_range, evade_range),
+                random.uniform(-evade_range * 0.7, evade_range * 0.7),
+                0
+            )
             self.evade_timer = 0
 
         # 적기는 플레이어 전방 60~80 유닛 거리를 유지하며 플레이어의 움직임에 반응
@@ -362,8 +378,14 @@ def request_enemy():
         enemies.append(Enemy(position=spawn_pos))
         print("적기가 눈앞에 나타났습니다! 60초 안에 격격추하세요.")
 
+def set_difficulty(val):
+    global difficulty
+    difficulty = clamp(val, 1, 10)
+    diff_text.text = f'Difficulty: {difficulty}'
+    print(f"난이도가 {difficulty}단계로 설정되었습니다.")
+
 def reset_game():
-    global game_state, timer, score, enemies
+    global game_state, timer, score, enemies, difficulty
     game_state = 'WAITING'
     timer = 60
     score = 0
@@ -382,21 +404,20 @@ player = Player()
 
 # 게임 설명서 및 설정 버튼 (톱니바퀴)
 help_panel = WindowPanel(
-    title='게임 설명서 (Manual)',
+    title='게임 설명서 및 설정',
     content=(
         Text('조작 방법:'),
-        Text('- 마우스: 비행기 회전 (Pitch/Yaw)'),
-        Text('- 왼쪽 클릭: 기관총 사격'),
-        Text('- W 키: 부스트 가속'),
-        Text('- B 키: 배경 테마 변경 (순환됨)'),
-        Text('  * 원래대로(낮) 돌리려면 B키를 여러번 누르세요.'),
-        Text('- ESC 키: 게임 종료'),
+        Text('- 마우스: 비행기 회전 / 왼쪽 클릭: 사격'),
+        Text('- SPACE: 적기 호출 / R: 초기화'),
+        Text('- 숫자키 1~0: 난이도 설정 (1:쉬움 ~ 10:매우어려움)'),
+        Text('- B: 배경 변경 / ESC: 종료'),
         Text(''),
-        Text('목표: 적기를 호출하고 60초 안에 격추하세요!'),
-        Text('- SPACE 키: 적기 호출 신호 보내기'),
-        Text('- R 키: 게임 초기화/재도전'),
-        Text('- 화면 중앙의 조준선에 적기를 넣고 사격하세요.'),
-        Text('- 60초 안에 격추하면 승리, 못하면 패배합니다.'),
+        Text('게임 규칙:'),
+        Text('- 적기를 60초 안에 격추하면 승리합니다.'),
+        Text('- 난이도가 높을수록 적기가 더 빠르고 불규칙하게 회피합니다.'),
+        Text(''),
+        Text('난이도 조절 (현재 단계 선택):'),
+        ButtonGroup(('1','2','3','4','5','6','7','8','9','10'), on_selection_changed=lambda i: set_difficulty(i+1)),
         Button(text='닫기', color=color.azure, on_click=lambda: setattr(help_panel, 'enabled', False))
     ),
     enabled=False,
@@ -422,6 +443,11 @@ def input(key):
         request_enemy()
     if key == 'r': # 게임 초기화
         reset_game()
+
+    # 숫자키로 난이도 직접 조절
+    if key in ['1','2','3','4','5','6','7','8','9','0']:
+        val = 10 if key == '0' else int(key)
+        set_difficulty(val)
 
 print("-" * 50)
 print("1950s Propeller Shooter 구동 중...")
