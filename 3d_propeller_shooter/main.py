@@ -86,9 +86,13 @@ class Player(Entity):
         camera.position = (0, 4, -12)
         camera.rotation_x = 12
 
+        # 조준선 (Crosshair / Reticle)
+        self.reticle = Entity(parent=camera.ui, model='circle', color=color.lime, scale=0.025, mode='line')
+        self.reticle_outer = Entity(parent=camera.ui, model='circle', color=color.lime, scale=0.05, mode='line')
+
         # 타겟 포인터 (적 추적 화살표 - UI)
-        self.pointer = Entity(parent=camera.ui, model='arrow', color=color.orange, scale=0.1, position=(0, 0.25))
-        self.target_dist_text = Text(parent=camera.ui, text='', position=(0, 0.2), origin=(0,0), scale=1.5, color=color.orange)
+        self.pointer = Entity(parent=camera.ui, model='arrow', color=color.orange, scale=0.08, position=(0, 0.35))
+        self.target_dist_text = Text(parent=camera.ui, text='', position=(0, 0.3), origin=(0,0), scale=1.5, color=color.orange)
 
         # 3D 추적기 (플레이어 기체 근처에서 적을 가리키는 화살표)
         self.tracker_3d = Entity(parent=self, model='arrow', color=color.yellow, scale=0.5, position=(0, 1.5, 2))
@@ -159,18 +163,18 @@ class Player(Entity):
         Bullet(position=pos, rotation=self.rotation)
         self.gun_side = 1 - self.gun_side
 
-# 탄환 클래스
+# 탄환 클래스 (추격전을 위해 탄속 상향)
 class Bullet(Entity):
     def __init__(self, **kwargs):
         super().__init__(
-            model='cube', # 실린더 대신 큐브를 길게 늘려 트레이서 느낌 구현 (회전 제어 용이)
+            model='cube',
             color=color.yellow,
-            scale=(0.1, 0.1, 2.0),
+            scale=(0.1, 0.1, 3.0), # 더 긴 트레이서
             collider='box',
             **kwargs
         )
-        self.speed = 250
-        self.lifetime = 1.5
+        self.speed = 400 # 탄속 대폭 상향
+        self.lifetime = 1.2
 
     def update(self):
         self.position += self.forward * self.speed * time.dt
@@ -186,7 +190,7 @@ class Bullet(Entity):
         if self.lifetime <= 0:
             destroy(self)
 
-# 적 비행체 클래스
+# 적 비행체 클래스 (추격전 특화 AI)
 class Enemy(Entity):
     def __init__(self, position):
         super().__init__(
@@ -200,30 +204,37 @@ class Enemy(Entity):
         Entity(parent=self, model='cube', color=color.brown, scale=(4, 0.1, 1), position=(0,0,0.3)) # 날개
         Entity(parent=self, model='cube', color=color.brown, scale=(0.1, 0.8, 0.5), position=(0,0.4,-1.4)) # 꼬리
 
-        # HUD 마커 (내장 텍스처 circle 사용)
+        # HUD 마커
         self.marker = Entity(model='quad', texture='circle', color=color.red, scale=1.5, billboard=True)
-        # 마커 테두리 효과를 위해 하나 더 겹침
         self.marker_inner = Entity(parent=self.marker, model='quad', texture='circle', color=color.white, scale=0.8, position=(0,0,-0.1))
 
         # 레이더 점
         self.radar_dot = Entity(parent=radar_base, model='circle', color=color.red, scale=0.08)
 
-        self.speed = random.uniform(15, 25)
-        self.target_timer = 0
-        self.move_dir = Vec3(random.uniform(-1,1), random.uniform(-0.2, 0.2), random.uniform(-1,1)).normalized()
+        self.speed = player.speed * 0.9 # 플레이어보다 약간 느려야 추격 가능
+        self.evade_timer = 0
+        self.move_dir = player.forward # 처음에는 플레이어 앞에서 도망가는 방향
 
     def update(self):
-        # 실감나는 비행: 플레이어 쪽으로 서서히 방향을 틀거나 불규칙하게 이동
-        self.target_timer += time.dt
-        if self.target_timer > 3:
-            # 3초마다 새로운 방향 설정 (플레이어 근처로)
-            to_player = (player.position - self.position).normalized()
-            self.move_dir = (to_player + Vec3(random.uniform(-0.5,0.5), random.uniform(-0.2,0.2), random.uniform(-0.5,0.5))).normalized()
-            self.target_timer = 0
+        # 회피 기동 로직
+        self.evade_timer += time.dt
+        if self.evade_timer > 2:
+            # 2초마다 플레이어의 시야에서 벗어나기 위해 급커브 시도
+            side_dir = Vec3(random.uniform(-1,1), random.uniform(-1,1), random.uniform(-0.2, 0.2)).normalized()
+            # 플레이어 전방 방향을 기준으로 무작위 회피 방향 설정
+            self.move_dir = (player.forward + side_dir).normalized()
+            self.evade_timer = 0
+            self.speed = player.speed * random.uniform(0.7, 1.1) # 속도 가속/감속
 
-        # 부드러운 회전 및 이동
-        self.look_at(self.position + self.move_dir)
+        # 부드럽게 방향 전환하며 이동
+        target_pos = self.position + self.move_dir
+        self.look_at(target_pos)
         self.position += self.forward * self.speed * time.dt
+
+        # 플레이어와 너무 멀어지면 다시 근처로 워프하거나 방향 조정 (추격 유지용)
+        dist = (self.position - player.position).length()
+        if dist > 600:
+            self.position = player.position + player.forward * 200 + Vec3(random.uniform(-50,50), random.uniform(-20,20), random.uniform(-50,50))
 
         # 마커 및 레이더 업데이트
         self.marker.position = self.position
@@ -307,23 +318,21 @@ def change_background():
     scene.fog_density = (0.002, 0.005) if bg['name'] == 'Foggy' else 0
     print(f"Background changed to: {bg['name']}")
 
-# 적 스폰
+# 적 스폰 (추격전을 위해 적기를 1~2대로 제한)
 enemies = []
 def spawn_enemy():
-    dist = 300
-    angle = random.uniform(0, math.pi * 2)
-    x = player.x + math.cos(angle) * dist
-    y = player.y + random.uniform(-30, 30)
-    z = player.z + math.sin(angle) * dist
-    enemies.append(Enemy(position=(x, y, z)))
-    invoke(spawn_enemy, delay=4)
+    if len([e for e in enemies if e and e.enabled]) < 2:
+        dist = random.uniform(150, 250)
+        # 플레이어의 전방 시야 근처에 스폰
+        spawn_pos = player.position + player.forward * dist + Vec3(random.uniform(-50,50), random.uniform(-20,20), random.uniform(-50,50))
+        enemies.append(Enemy(position=spawn_pos))
+
+    invoke(spawn_enemy, delay=3)
 
 player = Player()
 
-# 초기 적
-for _ in range(8):
-    pos = (random.uniform(-150, 150), random.uniform(-20, 50), random.uniform(50, 250))
-    enemies.append(Enemy(position=pos))
+# 초기 적 (1대만 먼저 스폰하여 추격 시작)
+enemies.append(Enemy(position=player.position + player.forward * 150))
 
 spawn_enemy()
 
@@ -339,8 +348,9 @@ help_panel = WindowPanel(
         Text('  * 원래대로(낮) 돌리려면 B키를 여러번 누르세요.'),
         Text('- ESC 키: 게임 종료'),
         Text(''),
-        Text('목표: 적 비행기를 격추하여 점수를 획득하세요!'),
-        Text('화면의 큰 화살표가 가장 가까운 적의 방향과 거리를 알려줍니다.'),
+        Text('목표: 도망치는 적기를 추격하여 조준선에 넣고 격추하세요!'),
+        Text('- 화면 중앙의 조준선(초록색 원)에 적기를 맞추는 것이 핵심입니다.'),
+        Text('- 적기는 당신의 추격을 피해 회피 기동을 합니다.'),
         Button(text='닫기', color=color.azure, on_click=lambda: setattr(help_panel, 'enabled', False))
     ),
     enabled=False,
