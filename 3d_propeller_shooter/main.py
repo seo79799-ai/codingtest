@@ -30,10 +30,15 @@ ground = Entity(model='plane', texture='grass', scale=2000, position=(0,-50,0), 
 # 바다/물 레이어 (멀리서 보일 용도)
 water = Entity(model='plane', color=color.azure, scale=5000, position=(0,-55,0))
 
-# 전역 변수
+# 전역 변수 및 게임 상태
 score = 0
 score_text = Text(text=f'Score: {score}', position=(-0.85, 0.40), scale=2, color=color.yellow)
 enemy_count_text = Text(text='Enemies: 0', position=(0, 0.45), origin=(0,0), scale=2, color=color.red)
+
+game_state = 'WAITING' # WAITING, PLAYING, WIN, LOSE
+timer = 60
+timer_text = Text(text='', position=(0, 0.4), origin=(0,0), scale=2, color=color.white)
+status_message = Text(text='SPACE 키를 눌러 적기를 호출하세요!', position=(0, 0), origin=(0,0), scale=2, color=color.yellow)
 
 # UI 요소: 레이더 (좌측 하단)
 radar_base = Entity(parent=camera.ui, model='circle', color=color.black66, scale=0.2, position=(-0.7, -0.35))
@@ -100,9 +105,34 @@ class Player(Entity):
         mouse.locked = True
 
     def update(self):
+        global game_state, timer
+
+        # 게임 타이머 로직
+        if game_state == 'PLAYING':
+            timer -= time.dt
+            timer_text.text = f'Time Left: {int(timer)}s'
+            status_message.text = ''
+
+            if timer <= 0:
+                game_state = 'LOSE'
+                status_message.text = '시간 초과! 패배하였습니다. (R 키로 재도전)'
+                status_message.color = color.red
+                # 남아있는 모든 적기 제거
+                for e in enemies:
+                    if e and e.enabled:
+                        destroy(e.marker)
+                        destroy(e.radar_dot)
+                        destroy(e)
+
         # 적 대수 업데이트
         active_enemies = [e for e in enemies if e and e.enabled]
         enemy_count_text.text = f'Enemies: {len(active_enemies)}'
+
+        # 승리 판정
+        if game_state == 'PLAYING' and len(active_enemies) == 0:
+            game_state = 'WIN'
+            status_message.text = '임무 완수! 승리하였습니다! (R 키로 재도전)'
+            status_message.color = color.green
 
         # 가장 가까운 적 찾기
         nearest_enemy = None
@@ -318,23 +348,43 @@ def change_background():
     scene.fog_density = (0.002, 0.005) if bg['name'] == 'Foggy' else 0
     print(f"Background changed to: {bg['name']}")
 
-# 적 스폰 (추격전을 위해 적기를 1~2대로 제한)
+# 적 스폰 (신호 기반 스폰으로 변경)
 enemies = []
-def spawn_enemy():
-    if len([e for e in enemies if e and e.enabled]) < 2:
-        dist = random.uniform(150, 250)
-        # 플레이어의 전방 시야 근처에 스폰
-        spawn_pos = player.position + player.forward * dist + Vec3(random.uniform(-50,50), random.uniform(-20,20), random.uniform(-50,50))
-        enemies.append(Enemy(position=spawn_pos))
+def request_enemy():
+    global game_state, timer, enemies
+    if game_state != 'PLAYING':
+        # 기존 적기 정리
+        for e in enemies:
+            if e and e.enabled:
+                destroy(e.marker)
+                destroy(e.radar_dot)
+                destroy(e)
+        enemies.clear()
 
-    invoke(spawn_enemy, delay=3)
+        game_state = 'PLAYING'
+        timer = 60
+        dist = random.uniform(100, 150)
+        spawn_pos = player.position + player.forward * dist + Vec3(random.uniform(-30,30), random.uniform(-10,10), random.uniform(-30,30))
+        enemies.append(Enemy(position=spawn_pos))
+        print("적기가 나타났습니다! 60초 안에 격추하세요.")
+
+def reset_game():
+    global game_state, timer, score, enemies
+    game_state = 'WAITING'
+    timer = 60
+    score = 0
+    score_text.text = f'Score: {score}'
+    timer_text.text = ''
+    status_message.text = 'SPACE 키를 눌러 적기를 호출하세요!'
+    status_message.color = color.yellow
+    for e in enemies:
+        if e and e.enabled:
+            destroy(e.marker)
+            destroy(e.radar_dot)
+            destroy(e)
+    enemies.clear()
 
 player = Player()
-
-# 초기 적 (1대만 먼저 스폰하여 추격 시작)
-enemies.append(Enemy(position=player.position + player.forward * 150))
-
-spawn_enemy()
 
 # 게임 설명서 및 설정 버튼 (톱니바퀴)
 help_panel = WindowPanel(
@@ -348,9 +398,11 @@ help_panel = WindowPanel(
         Text('  * 원래대로(낮) 돌리려면 B키를 여러번 누르세요.'),
         Text('- ESC 키: 게임 종료'),
         Text(''),
-        Text('목표: 도망치는 적기를 추격하여 조준선에 넣고 격추하세요!'),
-        Text('- 화면 중앙의 조준선(초록색 원)에 적기를 맞추는 것이 핵심입니다.'),
-        Text('- 적기는 당신의 추격을 피해 회피 기동을 합니다.'),
+        Text('목표: 적기를 호출하고 60초 안에 격추하세요!'),
+        Text('- SPACE 키: 적기 호출 신호 보내기'),
+        Text('- R 키: 게임 초기화/재도전'),
+        Text('- 화면 중앙의 조준선에 적기를 넣고 사격하세요.'),
+        Text('- 60초 안에 격추하면 승리, 못하면 패배합니다.'),
         Button(text='닫기', color=color.azure, on_click=lambda: setattr(help_panel, 'enabled', False))
     ),
     enabled=False,
@@ -372,6 +424,10 @@ def input(key):
         change_background()
     if key == 'h': # 도움말 단축키
         help_panel.enabled = not help_panel.enabled
+    if key == 'space': # 적기 호출
+        request_enemy()
+    if key == 'r': # 게임 초기화
+        reset_game()
 
 print("-" * 50)
 print("1950s Propeller Shooter 구동 중...")
