@@ -21,8 +21,12 @@ sky = Sky()
 camera.orthographic = False
 camera.fov = 60
 
+# 광원 추가
+sun = DirectionalLight()
+sun.look_at(Vec3(1,-1,-1))
+
 # 땅(바닥) 추가 (현실감 부여)
-ground = Entity(model='plane', texture='grass', scale=2000, position=(0,-50,0), collider='mesh')
+ground = Entity(model='plane', texture='grass', scale=2000, position=(0,-50,0), collider='mesh', tiling=(20,20))
 # 바다/물 레이어 (멀리서 보일 용도)
 water = Entity(model='plane', color=color.azure, scale=5000, position=(0,-55,0))
 
@@ -81,9 +85,12 @@ class Player(Entity):
         camera.position = (0, 4, -12)
         camera.rotation_x = 12
 
-        # 타겟 포인터 (적 추적 화살표)
+        # 타겟 포인터 (적 추적 화살표 - UI)
         self.pointer = Entity(parent=camera.ui, model='arrow', color=color.orange, scale=0.05, position=(0, 0.2))
         self.target_dist_text = Text(parent=camera.ui, text='', position=(0, 0.15), origin=(0,0), scale=1, color=color.orange)
+
+        # 3D 추적기 (플레이어 기체 근처에서 적을 가리키는 화살표)
+        self.tracker_3d = Entity(parent=self, model='arrow', color=color.yellow, scale=0.5, position=(0, 1.5, 2))
 
         mouse.locked = True
 
@@ -100,14 +107,19 @@ class Player(Entity):
 
         if nearest_enemy:
             # 화면 중앙에서 적 방향으로 화살표 회전
-            p_pos = camera.world_to_screen(nearest_enemy.world_position)
+            p_pos = world_to_screen(nearest_enemy.world_position)
             angle = math.degrees(math.atan2(p_pos.x, p_pos.y))
             self.pointer.rotation_z = -angle
             self.pointer.enabled = True
             self.target_dist_text.text = f"{int(min_dist)}m"
+
+            # 3D 추적기가 적을 바라보게 설정
+            self.tracker_3d.look_at(nearest_enemy)
+            self.tracker_3d.enabled = True
         else:
             self.pointer.enabled = False
             self.target_dist_text.text = ""
+            self.tracker_3d.enabled = False
 
         # 프로펠러 회전
         self.propeller.rotation_z += 1200 * time.dt
@@ -228,23 +240,40 @@ class Enemy(Entity):
         score += 100
         score_text.text = f'Score: {score}'
 
-        # 화려한 파티클 폭발 효과
-        for _ in range(15):
+        # 실감나는 폭발: 연기 및 화염 파티클
+        for _ in range(25):
             particle = Entity(
                 model='sphere',
-                color=random.choice([color.orange, color.yellow, color.red]),
+                color=random.choice([color.orange, color.yellow, color.red, color.gray]),
                 position=self.position + Vec3(random.uniform(-1,1), random.uniform(-1,1), random.uniform(-1,1)),
-                scale=random.uniform(0.5, 1.5)
+                scale=random.uniform(0.3, 1.2)
             )
-            particle.animate_position(particle.position + Vec3(random.uniform(-5,5), random.uniform(-5,5), random.uniform(-5,5)), duration=0.5)
-            particle.animate_scale(0, duration=0.5)
-            destroy(particle, delay=0.5)
+            # 사방으로 튀어나감
+            dest = particle.position + Vec3(random.uniform(-8,8), random.uniform(-8,8), random.uniform(-8,8))
+            particle.animate_position(dest, duration=0.6, curve=curve.out_expo)
+            particle.animate_scale(0, duration=0.6)
+            destroy(particle, delay=0.6)
 
-        # 중앙 거대 화염
-        explode = Entity(model='sphere', color=color.orange, position=self.position, scale=2)
-        explode.animate_scale(8, duration=0.4)
-        explode.fade_out(duration=0.4)
-        destroy(explode, delay=0.4)
+        # 물리 파편 효과 (큐브 파편)
+        for _ in range(8):
+            debris = Entity(
+                model='cube',
+                color=color.brown,
+                position=self.position,
+                scale=random.uniform(0.2, 0.5),
+                rotation=(random.randint(0,360), random.randint(0,360), random.randint(0,360))
+            )
+            dest = debris.position + Vec3(random.uniform(-10,10), random.uniform(-15,5), random.uniform(-10,10))
+            debris.animate_position(dest, duration=1.0, curve=curve.out_circ)
+            debris.animate_rotation((720, 720, 720), duration=1.0)
+            debris.fade_out(duration=1.0)
+            destroy(debris, delay=1.0)
+
+        # 중앙 거대 섬광
+        explode = Entity(model='sphere', color=color.yellow, position=self.position, scale=1)
+        explode.animate_scale(12, duration=0.3, curve=curve.out_expo)
+        explode.fade_out(duration=0.3)
+        destroy(explode, delay=0.3)
 
         destroy(self.marker)
         # self.marker_inner는 marker의 자식이므로 함께 삭제됨
@@ -253,10 +282,10 @@ class Enemy(Entity):
 
 # 배경 변경 시스템
 bg_types = [
-    {'name': 'Day', 'color': color.white, 'sky': color.azure},
-    {'name': 'Dusk', 'color': color.orange, 'sky': color.orange},
-    {'name': 'Night', 'color': color.black, 'sky': color.black},
-    {'name': 'Foggy', 'color': color.gray, 'sky': color.light_gray}
+    {'name': 'Day', 'sky': color.azure, 'sun': color.white},
+    {'name': 'Dusk', 'sky': color.orange, 'sun': color.orange},
+    {'name': 'Night', 'sky': color.black, 'sun': color.dark_gray},
+    {'name': 'Foggy', 'sky': color.light_gray, 'sun': color.white}
 ]
 current_bg = 0
 
@@ -265,6 +294,7 @@ def change_background():
     current_bg = (current_bg + 1) % len(bg_types)
     bg = bg_types[current_bg]
     sky.color = bg['sky']
+    sun.color = bg['sun']
     scene.fog_color = bg['sky']
     scene.fog_density = (0.002, 0.005) if bg['name'] == 'Foggy' else 0
     print(f"Background changed to: {bg['name']}")
