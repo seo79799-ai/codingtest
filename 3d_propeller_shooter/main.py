@@ -26,9 +26,21 @@ sun = DirectionalLight()
 sun.look_at(Vec3(1,-1,-1))
 
 # 땅(바닥) 추가 (현실감 부여)
-ground = Entity(model='plane', texture='grass', scale=2000, position=(0,-50,0), collider='mesh', tiling=(20,20))
+ground = Entity(model='plane', texture='grass', scale=2000, position=(0,-50,0), collider='mesh', tiling=(40,40))
 # 바다/물 레이어 (멀리서 보일 용도)
 water = Entity(model='plane', color=color.azure, scale=5000, position=(0,-55,0))
+
+# 구름 추가 (리얼리티 강화)
+clouds = []
+for _ in range(30):
+    cloud = Entity(
+        model='sphere',
+        color=color.white,
+        alpha=0.6,
+        scale=(random.uniform(20, 50), random.uniform(5, 15), random.uniform(20, 40)),
+        position=(random.uniform(-500, 500), random.uniform(100, 200), random.uniform(-500, 1000)),
+    )
+    clouds.append(cloud)
 
 # 전역 변수 및 게임 상태
 score = 0
@@ -93,12 +105,11 @@ class Player(Entity):
         camera.position = (0, 4, -12)
         camera.rotation_x = 12
 
-        # 조준선 (검정색 원 + 얇은 십자선, 크기 2/3로 축소)
-        reticle_scale = 0.16 # 기존(0.25)의 약 2/3 수준
-        self.reticle_circle = Entity(parent=camera.ui, model='circle', color=color.black, scale=reticle_scale, mode='line', thickness=2)
-        # 중앙 십자선 (앞이 잘 보이도록 얇게)
-        self.grid_h = Entity(parent=camera.ui, model='quad', color=color.black, scale=(reticle_scale*0.8, 0.002), position=(0,0))
-        self.grid_v = Entity(parent=camera.ui, model='quad', color=color.black, scale=(0.002, reticle_scale*0.8), position=(0,0))
+        # 조준선 (빨간색 테두리 + 중앙 검은 점)
+        reticle_scale = 0.12
+        self.reticle_circle = Entity(parent=camera.ui, model='circle', color=color.red, scale=reticle_scale, mode='line', thickness=3)
+        # 중앙 검은 점 (앞이 잘 보이도록)
+        self.reticle_dot = Entity(parent=camera.ui, model='circle', color=color.black, scale=0.005, position=(0,0))
 
         # 타겟 포인터 (적 추적 화살표 - UI)
         self.pointer = Entity(parent=camera.ui, model='arrow', color=color.orange, scale=0.08, position=(0, 0.35))
@@ -381,6 +392,14 @@ def set_difficulty(val):
     global difficulty
     difficulty = clamp(val, 1, 10)
     diff_text.text = f'Difficulty: {difficulty}'
+
+    # 버튼 색상 업데이트 (선택된 단계 강조)
+    for i, btn in enumerate(diff_buttons):
+        if i + 1 == difficulty:
+            btn.color = color.orange
+        else:
+            btn.color = color.black66
+
     print(f"난이도가 {difficulty}단계로 설정되었습니다.")
 
 def reset_game():
@@ -439,7 +458,7 @@ for i in range(1, 11):
         parent=camera.ui,
         scale=(0.03, 0.03),
         position=(0.85, 0.35 - (i * 0.04)),
-        color=color.black66,
+        color=color.orange if i == 1 else color.black66,
         highlight_color=color.lime,
         on_click=Func(set_difficulty, i)
     )
