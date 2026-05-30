@@ -83,8 +83,8 @@ class Player(Entity):
         self.boost_speed = 50
         self.rotation_speed = 100
 
-        # 사격 설정
-        self.shoot_cooldown = 0.12
+        # 사격 설정 (연사력 대폭 상향)
+        self.shoot_cooldown = 0.05
         self.timer = 0
         self.gun_side = 0 # 0: 좌측, 1: 우측 번갈아 사격
 
@@ -93,13 +93,12 @@ class Player(Entity):
         camera.position = (0, 4, -12)
         camera.rotation_x = 12
 
-        # 조준선 (검정색 그물망 스타일)
-        self.reticle_base = Entity(parent=camera.ui, model='quad', color=color.black, scale=0.2, alpha=0.1) # 배경 살짝
-        # 십자선 그물망 (간격 넓게)
-        self.grid_h = Entity(parent=camera.ui, model='quad', color=color.black, scale=(0.3, 0.002), position=(0,0))
-        self.grid_v = Entity(parent=camera.ui, model='quad', color=color.black, scale=(0.002, 0.3), position=(0,0))
-        # 큰 원형 가이드
-        self.reticle_circle = Entity(parent=camera.ui, model='circle', color=color.black, scale=0.25, mode='line', thickness=2)
+        # 조준선 (검정색 원 + 얇은 십자선, 크기 2/3로 축소)
+        reticle_scale = 0.16 # 기존(0.25)의 약 2/3 수준
+        self.reticle_circle = Entity(parent=camera.ui, model='circle', color=color.black, scale=reticle_scale, mode='line', thickness=2)
+        # 중앙 십자선 (앞이 잘 보이도록 얇게)
+        self.grid_h = Entity(parent=camera.ui, model='quad', color=color.black, scale=(reticle_scale*0.8, 0.002), position=(0,0))
+        self.grid_v = Entity(parent=camera.ui, model='quad', color=color.black, scale=(0.002, reticle_scale*0.8), position=(0,0))
 
         # 타겟 포인터 (적 추적 화살표 - UI)
         self.pointer = Entity(parent=camera.ui, model='arrow', color=color.orange, scale=0.08, position=(0, 0.35))
@@ -431,6 +430,21 @@ gear_button = Button(
     position=(0.85, 0.45),
     on_click=lambda: setattr(help_panel, 'enabled', not help_panel.enabled)
 )
+
+# 화면 우측 난이도 퀵 버튼
+diff_buttons = []
+for i in range(1, 11):
+    btn = Button(
+        text=str(i),
+        parent=camera.ui,
+        scale=(0.03, 0.03),
+        position=(0.85, 0.35 - (i * 0.04)),
+        color=color.black66,
+        highlight_color=color.lime,
+        on_click=Func(set_difficulty, i)
+    )
+    diff_buttons.append(btn)
+Text(parent=camera.ui, text='Difficulty Select', position=(0.78, 0.35), scale=1, color=color.white)
 
 def input(key):
     if key == 'escape':
