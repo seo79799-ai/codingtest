@@ -107,7 +107,11 @@ class Player(Entity):
 
         if nearest_enemy:
             # 화면 중앙에서 적 방향으로 화살표 회전
-            p_pos = world_to_screen(nearest_enemy.world_position)
+            # 템플릿 엔티티를 사용하여 월드 좌표를 스크린 좌표로 변환
+            _temp = Entity(position=nearest_enemy.world_position, add_to_scene_entities=False)
+            p_pos = _temp.screen_position
+            destroy(_temp)
+
             angle = math.degrees(math.atan2(p_pos.x, p_pos.y))
             self.pointer.rotation_z = -angle
             self.pointer.enabled = True
@@ -319,10 +323,43 @@ for _ in range(8):
 
 spawn_enemy()
 
+# 게임 설명서 및 설정 버튼 (톱니바퀴)
+help_panel = WindowPanel(
+    title='게임 설명서 (Manual)',
+    content=(
+        Text('조작 방법:'),
+        Text('- 마우스: 비행기 회전 (Pitch/Yaw)'),
+        Text('- 왼쪽 클릭: 기관총 사격'),
+        Text('- W 키: 부스트 가속'),
+        Text('- B 키: 배경 테마 변경'),
+        Text('- ESC 키: 게임 종료'),
+        Text(''),
+        Text('목표: 적 비행기를 격추하여 점수를 획득하세요!'),
+        Button(text='닫기', color=color.azure, on_click=lambda: setattr(help_panel, 'enabled', False))
+    ),
+    enabled=False,
+    popup=True
+)
+
+gear_button = Button(
+    text='⚙',
+    color=color.black66,
+    scale=0.05,
+    position=(0.85, 0.45),
+    on_click=lambda: setattr(help_panel, 'enabled', not help_panel.enabled)
+)
+
 def input(key):
     if key == 'escape':
         quit()
     if key == 'b': # 배경 변경 단축키
         change_background()
+    if key == 'h': # 도움말 단축키
+        help_panel.enabled = not help_panel.enabled
+
+print("-" * 50)
+print("1950s Propeller Shooter 구동 중...")
+print("화면 우측 상단의 톱니바퀴 버튼을 눌러 설명서를 확인할 수 있습니다.")
+print("-" * 50)
 
 app.run()
