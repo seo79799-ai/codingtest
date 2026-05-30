@@ -1,15 +1,16 @@
 # pip install ursina
 from ursina import *
 import random
+import math
 
 # ==========================================
-# 1950년대 풍 3D 프로펠러 비행 슈팅 게임
+# 1950년대 풍 3D 프로펠러 비행 슈팅 게임 (개선판)
 # ==========================================
 
 app = Ursina()
 
 # 기본 설정
-window.title = '1950s Propeller Shooter'
+window.title = '1950s Propeller Shooter - Advanced'
 window.borderless = False
 window.fullscreen = False
 window.exit_button.visible = False
@@ -22,7 +23,16 @@ camera.fov = 60
 
 # 전역 변수
 score = 0
-score_text = Text(text=f'Score: {score}', position=(-0.85, 0.45), scale=2, color=color.yellow)
+score_text = Text(text=f'Score: {score}', position=(-0.85, 0.40), scale=2, color=color.yellow)
+
+# UI 요소: 레이더 (좌측 하단)
+radar_base = Entity(parent=camera.ui, model='circle', color=color.black66, scale=0.2, position=(-0.7, -0.35))
+radar_scan = Entity(parent=radar_base, model='circle', color=color.green, scale=0.05) # 플레이어 표시
+
+# UI 요소: 나침반 (좌측 상단)
+compass_base = Entity(parent=camera.ui, model='circle', color=color.black66, scale=0.15, position=(-0.7, 0.3))
+compass_arrow = Entity(parent=compass_base, model='arrow', color=color.red, scale=0.6, rotation_z=0)
+Text(parent=compass_base, text='N', position=(0, 0.6), origin=(0,0), scale=5)
 
 # 플레이어 비행기 클래스
 class Player(Entity):
@@ -30,77 +40,92 @@ class Player(Entity):
         super().__init__(
             model='cube',
             color=color.light_gray,
-            scale=(1.2, 0.8, 3),
+            scale=(1, 0.8, 4), # 동체 길게
             collider='box'
         )
 
-        # 날개 구현 (내장 프리미티브 사용)
-        self.wings = Entity(parent=self, model='cube', color=color.gray, scale=(4.5, 0.1, 0.8), position=(0, 0, 0.2))
-        self.tail_fin = Entity(parent=self, model='cube', color=color.gray, scale=(0.1, 1.2, 0.6), position=(0, 0.5, -1.2))
+        # --- 정교한 비행기 모델링 ---
+        # 콕핏
+        self.cockpit = Entity(parent=self, model='sphere', color=color.cyan, scale=(0.6, 0.5, 0.3), position=(0, 0.4, 0.2))
+        # 날개 (주익)
+        self.wings = Entity(parent=self, model='cube', color=color.gray, scale=(5, 0.1, 1.2), position=(0, 0, 0.5))
+        # 수평 꼬리날개
+        self.tail_h = Entity(parent=self, model='cube', color=color.gray, scale=(2, 0.1, 0.6), position=(0, 0, -1.6))
+        # 수직 꼬리날개
+        self.tail_v = Entity(parent=self, model='cube', color=color.gray, scale=(0.1, 1, 0.6), position=(0, 0.5, -1.6))
 
-        # 프로펠러 구현
-        self.propeller = Entity(parent=self, model='cube', color=color.black, scale=(2.5, 0.1, 0.1), position=(0, 0, 1.5))
+        # 기관총 (날개에 장착)
+        self.gun_l = Entity(parent=self, model='cylinder', color=color.black, scale=(0.05, 0.8, 0.05), position=(-1, 0, 1), rotation_x=90)
+        self.gun_r = Entity(parent=self, model='cylinder', color=color.black, scale=(0.05, 0.8, 0.05), position=(1, 0, 1), rotation_x=90)
 
-        self.speed = 20
-        self.boost_speed = 40
+        # 프로펠러
+        self.prop_hub = Entity(parent=self, model='sphere', color=color.dark_gray, scale=(0.3, 0.3, 0.2), position=(0, 0, 2))
+        self.propeller = Entity(parent=self, model='cube', color=color.black, scale=(3, 0.1, 0.05), position=(0, 0, 2.1))
+
+        self.speed = 25
+        self.boost_speed = 50
         self.rotation_speed = 100
 
-        # 사격 쿨타임 설정
-        self.shoot_cooldown = 0.1
+        # 사격 설정
+        self.shoot_cooldown = 0.12
         self.timer = 0
+        self.gun_side = 0 # 0: 좌측, 1: 우측 번갈아 사격
 
-        # 카메라를 플레이어 자식으로 설정 (3인칭 백뷰)
+        # 카메라 설정
         camera.parent = self
-        camera.position = (0, 3, -10)
-        camera.rotation_x = 10
+        camera.position = (0, 4, -12)
+        camera.rotation_x = 12
 
         mouse.locked = True
 
     def update(self):
         # 프로펠러 회전
-        self.propeller.rotation_z += 1000 * time.dt
+        self.propeller.rotation_z += 1200 * time.dt
 
-        # 마우스 조작 (Pitch, Yaw, Roll)
+        # 조작 (Pitch, Yaw, Roll)
         self.rotation_x -= mouse.velocity[1] * self.rotation_speed
         self.rotation_y += mouse.velocity[0] * self.rotation_speed
 
-        # 자연스러운 Roll 효과
-        target_roll = -mouse.velocity[0] * self.rotation_speed * 0.5
-        self.rotation_z = lerp(self.rotation_z, target_roll, time.dt * 5)
+        # 비행기 기울기에 따른 Roll 효과
+        target_roll = -mouse.velocity[0] * self.rotation_speed * 0.6
+        self.rotation_z = lerp(self.rotation_z, target_roll, time.dt * 4)
 
-        # 전진 이동
+        # 이동
         current_speed = self.boost_speed if held_keys['w'] else self.speed
         self.position += self.forward * current_speed * time.dt
 
-        # 사격 처리 (쿨타임 적용)
+        # 사격 (마우스 좌클릭)
         self.timer += time.dt
         if mouse.left and self.timer >= self.shoot_cooldown:
             self.shoot()
             self.timer = 0
 
+        # 나침반 업데이트
+        compass_arrow.rotation_z = -self.rotation_y
+
     def shoot(self):
-        # 기관총 발사 (탄환 엔티티 생성)
-        # 좌우 총구에서 번갈아 나가는 느낌을 위해 약간의 offset 추가 가능 (여기서는 중앙 발사)
-        bullet = Bullet(position=self.position + self.forward * 2, rotation=self.rotation)
+        # 번갈아가며 사격
+        pos = self.gun_l.world_position if self.gun_side == 0 else self.gun_r.world_position
+        Bullet(position=pos, rotation=self.rotation)
+        self.gun_side = 1 - self.gun_side
 
 # 탄환 클래스
 class Bullet(Entity):
     def __init__(self, **kwargs):
         super().__init__(
-            model='sphere',
+            model='cube', # 실린더 대신 큐브를 길게 늘려 트레이서 느낌 구현 (회전 제어 용이)
             color=color.yellow,
-            scale=0.2,
-            collider='sphere',
+            scale=(0.1, 0.1, 2.0),
+            collider='box',
             **kwargs
         )
-        self.speed = 150
-        self.lifetime = 2.0
+        self.speed = 250
+        self.lifetime = 1.5
 
     def update(self):
         self.position += self.forward * self.speed * time.dt
         self.lifetime -= time.dt
 
-        # 충돌 판정
         hit_info = self.intersects()
         if hit_info.hit:
             if isinstance(hit_info.entity, Enemy):
@@ -117,80 +142,94 @@ class Enemy(Entity):
         super().__init__(
             model='cube',
             color=color.red,
-            scale=(2, 1, 2.5),
+            scale=(1, 0.7, 3.5),
             position=position,
             collider='box'
         )
-        # 적 날개
-        Entity(parent=self, model='cube', color=color.dark_gray, scale=(4, 0.1, 0.6))
+        # 적 모델링
+        Entity(parent=self, model='cube', color=color.maroon, scale=(4, 0.1, 1), position=(0,0,0.3)) # 날개
+        Entity(parent=self, model='cube', color=color.maroon, scale=(0.1, 0.8, 0.5), position=(0,0.4,-1.4)) # 꼬리
 
-        # HUD 타겟 마커 (가시성 확보)
-        self.marker = Entity(
-            model='quad',
-            texture='circle_outlined',
-            color=color.red,
-            scale=3,
-            billboard=True,
-            double_sided=True
-        )
+        # HUD 마커 (내장 텍스처 circle 사용)
+        self.marker = Entity(model='quad', texture='circle', color=color.red, scale=1.5, billboard=True)
+        # 마커 테두리 효과를 위해 하나 더 겹침
+        self.marker_inner = Entity(parent=self.marker, model='quad', texture='circle', color=color.white, scale=0.8, position=(0,0,-0.1))
+
+        # 레이더 점
+        self.radar_dot = Entity(parent=radar_base, model='circle', color=color.red, scale=0.08)
+
+        self.speed = random.uniform(15, 25)
+        self.target_timer = 0
+        self.move_dir = Vec3(random.uniform(-1,1), random.uniform(-0.2, 0.2), random.uniform(-1,1)).normalized()
 
     def update(self):
-        # 플레이어 근처로 아주 느리게 이동하거나 배회하도록 설정 가능
-        self.rotation_y += 10 * time.dt
+        # 실감나는 비행: 플레이어 쪽으로 서서히 방향을 틀거나 불규칙하게 이동
+        self.target_timer += time.dt
+        if self.target_timer > 3:
+            # 3초마다 새로운 방향 설정 (플레이어 근처로)
+            to_player = (player.position - self.position).normalized()
+            self.move_dir = (to_player + Vec3(random.uniform(-0.5,0.5), random.uniform(-0.2,0.2), random.uniform(-0.5,0.5))).normalized()
+            self.target_timer = 0
 
-        # 타겟 마커 위치 업데이트 (적의 위치 추적)
+        # 부드러운 회전 및 이동
+        self.look_at(self.position + self.move_dir)
+        self.position += self.forward * self.speed * time.dt
+
+        # 마커 및 레이더 업데이트
         self.marker.position = self.position
+
+        # 레이더 좌표 계산 (2D 투영)
+        rel_pos = self.position - player.position
+        dist = rel_pos.length()
+        if dist < 300: # 레이더 범위 내
+            radar_x = rel_pos.x / 300
+            radar_y = rel_pos.z / 300
+            # 플레이어의 회전에 맞춰 레이더 점 회전
+            angle = math.radians(player.rotation_y)
+            rx = radar_x * math.cos(angle) - radar_y * math.sin(angle)
+            ry = radar_x * math.sin(angle) + radar_y * math.cos(angle)
+            self.radar_dot.enabled = True
+            self.radar_dot.position = (rx, ry)
+        else:
+            self.radar_dot.enabled = False
 
     def destroy_enemy(self):
         global score
         score += 100
         score_text.text = f'Score: {score}'
 
-        # 파괴 이펙트 (간단한 색상 변화 및 스케일 축소 후 제거)
         explode = Entity(model='sphere', color=color.orange, position=self.position, scale=1)
-        explode.animate_scale(5, duration=0.2, curve=curve.out_expo)
-        explode.fade_out(duration=0.2)
-        destroy(explode, delay=0.2)
+        explode.animate_scale(6, duration=0.3)
+        explode.fade_out(duration=0.3)
+        destroy(explode, delay=0.3)
 
         destroy(self.marker)
+        # self.marker_inner는 marker의 자식이므로 함께 삭제됨
+        destroy(self.radar_dot)
         destroy(self)
 
-# 적 스폰 매니저
+# 적 스폰
 enemies = []
 def spawn_enemy():
-    x = random.uniform(-100, 100)
-    y = random.uniform(-20, 50)
-    z = player.z + random.uniform(150, 250)
-    new_enemy = Enemy(position=(x, y, z))
-    enemies.append(new_enemy)
+    dist = 300
+    angle = random.uniform(0, math.pi * 2)
+    x = player.x + math.cos(angle) * dist
+    y = player.y + random.uniform(-30, 30)
+    z = player.z + math.sin(angle) * dist
+    enemies.append(Enemy(position=(x, y, z)))
+    invoke(spawn_enemy, delay=4)
 
-    # 주기적으로 계속 스폰
-    invoke(spawn_enemy, delay=2)
-
-# 게임 시작
 player = Player()
 
-# 초기 적 생성
-for _ in range(10):
-    x = random.uniform(-100, 100)
-    y = random.uniform(-20, 50)
-    z = random.uniform(50, 200)
-    enemies.append(Enemy(position=(x, y, z)))
+# 초기 적
+for _ in range(8):
+    pos = (random.uniform(-150, 150), random.uniform(-20, 50), random.uniform(50, 250))
+    enemies.append(Enemy(position=pos))
 
 spawn_enemy()
 
 def input(key):
     if key == 'escape':
         quit()
-
-# 실행 안내 메시지
-print("-" * 50)
-print("1950s Propeller Shooter 구동 중...")
-print("조작 방법:")
-print("- 마우스 이동: 비행기 회전 (Pitch/Yaw)")
-print("- 마우스 왼쪽 클릭: 기관총 사격")
-print("- W 키: 부스트 가속")
-print("- ESC 키: 게임 종료")
-print("-" * 50)
 
 app.run()
