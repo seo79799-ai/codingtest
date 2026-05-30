@@ -220,7 +220,7 @@ class Bullet(Entity):
         if self.lifetime <= 0:
             destroy(self)
 
-# 적 비행체 클래스 (추격전 특화 AI)
+# 적 비행체 클래스 (추격전 및 타겟팅 특화 AI)
 class Enemy(Entity):
     def __init__(self, position):
         super().__init__(
@@ -241,30 +241,24 @@ class Enemy(Entity):
         # 레이더 점
         self.radar_dot = Entity(parent=radar_base, model='circle', color=color.red, scale=0.08)
 
-        self.speed = player.speed * 0.9 # 플레이어보다 약간 느려야 추격 가능
+        self.speed = player.speed # 플레이어와 비슷한 속도 유지
         self.evade_timer = 0
-        self.move_dir = player.forward # 처음에는 플레이어 앞에서 도망가는 방향
+        self.offset = Vec3(0,0,0) # 조준 방해를 위한 미세 움직임 값
 
     def update(self):
-        # 회피 기동 로직
+        # 플레이어의 전방 위치를 따라가면서 미세하게 회피
         self.evade_timer += time.dt
-        if self.evade_timer > 2:
-            # 2초마다 플레이어의 시야에서 벗어나기 위해 급커브 시도
-            side_dir = Vec3(random.uniform(-1,1), random.uniform(-1,1), random.uniform(-0.2, 0.2)).normalized()
-            # 플레이어 전방 방향을 기준으로 무작위 회피 방향 설정
-            self.move_dir = (player.forward + side_dir).normalized()
+        if self.evade_timer > 0.5: # 0.5초마다 회피 방향 미세 조정
+            self.offset = Vec3(random.uniform(-15, 15), random.uniform(-10, 10), 0)
             self.evade_timer = 0
-            self.speed = player.speed * random.uniform(0.7, 1.1) # 속도 가속/감속
 
-        # 부드럽게 방향 전환하며 이동
-        target_pos = self.position + self.move_dir
-        self.look_at(target_pos)
-        self.position += self.forward * self.speed * time.dt
+        # 적기는 플레이어 전방 60~80 유닛 거리를 유지하며 플레이어의 움직임에 반응
+        target_base = player.position + player.forward * 70
+        target_pos = target_base + player.right * self.offset.x + player.up * self.offset.y
 
-        # 플레이어와 너무 멀어지면 다시 근처로 워프하거나 방향 조정 (추격 유지용)
-        dist = (self.position - player.position).length()
-        if dist > 600:
-            self.position = player.position + player.forward * 200 + Vec3(random.uniform(-50,50), random.uniform(-20,20), random.uniform(-50,50))
+        # 부드럽게 타겟 위치로 이동 및 회전
+        self.position = lerp(self.position, target_pos, time.dt * 3)
+        self.look_at(self.position + player.forward) # 플레이어와 같은 방향으로 도망
 
         # 마커 및 레이더 업데이트
         self.marker.position = self.position
@@ -348,7 +342,7 @@ def change_background():
     scene.fog_density = (0.002, 0.005) if bg['name'] == 'Foggy' else 0
     print(f"Background changed to: {bg['name']}")
 
-# 적 스폰 (신호 기반 스폰으로 변경)
+# 적 스폰 (신호 기반 스폰 - 플레이어 바로 앞에 출현)
 enemies = []
 def request_enemy():
     global game_state, timer, enemies
@@ -363,10 +357,10 @@ def request_enemy():
 
         game_state = 'PLAYING'
         timer = 60
-        dist = random.uniform(100, 150)
-        spawn_pos = player.position + player.forward * dist + Vec3(random.uniform(-30,30), random.uniform(-10,10), random.uniform(-30,30))
+        # 플레이어 정면 60 유닛 거리에 즉시 스폰
+        spawn_pos = player.position + player.forward * 60
         enemies.append(Enemy(position=spawn_pos))
-        print("적기가 나타났습니다! 60초 안에 격추하세요.")
+        print("적기가 눈앞에 나타났습니다! 60초 안에 격격추하세요.")
 
 def reset_game():
     global game_state, timer, score, enemies
