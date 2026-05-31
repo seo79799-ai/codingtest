@@ -42,17 +42,85 @@ for _ in range(30):
     )
     clouds.append(cloud)
 
+# 다국어 번역 시스템
+translations = {
+    'en': {
+        'score': 'Score',
+        'enemies': 'Enemies',
+        'timer': 'Time Left',
+        'call_enemy': 'Press SPACE to call the enemy!',
+        'win': 'Mission Accomplished! You Win! (R to Reset)',
+        'lose': 'Time Over! You Lose. (R to Reset)',
+        'paused': 'PAUSED',
+        'manual_title': 'Game Manual & Settings',
+        'controls': 'Controls:',
+        'mouse': '- Mouse: Rotate / Left Click: Shoot',
+        'space': '- SPACE: Call Enemy / R: Reset',
+        'pause_key': '- P: Pause/Resume',
+        'diff_key': '- 1~0: Difficulty (1:Easy ~ 10:Hard)',
+        'bg_key': '- B: Change Background / ESC: Quit',
+        'rules': 'Rules:',
+        'rule1': '- Destroy the enemy within 60 seconds.',
+        'rule2': '- Higher difficulty means faster evasion.',
+        'diff_select': 'Difficulty Select',
+        'close': 'Close',
+        'notif_spawn': 'Enemy spotted! 60s starts now.'
+    },
+    'ko': {
+        'score': '점수',
+        'enemies': '적기',
+        'timer': '남은 시간',
+        'call_enemy': 'SPACE 키를 눌러 적기를 호출하세요!',
+        'win': '임무 완수! 승리하였습니다! (R 키로 재도전)',
+        'lose': '시간 초과! 패배하였습니다. (R 키로 재도전)',
+        'paused': '일시정지',
+        'manual_title': '게임 설명서 및 설정',
+        'controls': '조작 방법:',
+        'mouse': '- 마우스: 회전 / 왼쪽 클릭: 사격',
+        'space': '- SPACE: 적기 호출 / R: 초기화',
+        'pause_key': '- P: 일시정지/재개',
+        'diff_key': '- 숫자키 1~0: 난이도 설정 (1~10)',
+        'bg_key': '- B: 배경 변경 / ESC: 종료',
+        'rules': '게임 규칙:',
+        'rule1': '- 60초 안에 적기를 격추하면 승리합니다.',
+        'rule2': '- 난이도가 높을수록 적기가 더 잘 피합니다.',
+        'diff_select': '난이도 선택',
+        'close': '닫기',
+        'notif_spawn': '적기가 눈앞에 나타났습니다!'
+    }
+}
+
+current_lang = 'en'
+def load_language():
+    global current_lang
+    try:
+        with open('lang_settings.txt', 'r') as f:
+            l = f.read().strip()
+            if l in translations:
+                current_lang = l
+    except:
+        current_lang = 'en'
+
+def save_language(l):
+    global current_lang
+    current_lang = l
+    with open('lang_settings.txt', 'w') as f:
+        f.write(l)
+    update_ui_text()
+
+load_language()
+
 # 전역 변수 및 게임 상태
 score = 0
-score_text = Text(text=f'Score: {score}', position=(-0.85, 0.40), scale=2, color=color.yellow)
-enemy_count_text = Text(text='Enemies: 0', position=(0, 0.45), origin=(0,0), scale=2, color=color.red)
+score_text = Text(text='', position=(-0.85, 0.40), scale=2, color=color.yellow)
+enemy_count_text = Text(text='', position=(0, 0.45), origin=(0,0), scale=2, color=color.red)
 
 game_state = 'WAITING' # WAITING, PLAYING, WIN, LOSE
 difficulty = 1 # 1~10 단계
 timer = 60
 timer_text = Text(text='', position=(0, 0.4), origin=(0,0), scale=2, color=color.white)
-status_message = Text(text='SPACE 키를 눌러 적기를 호출하세요!', position=(0, 0.1), origin=(0,0), scale=2, color=color.yellow)
-diff_text = Text(text=f'Difficulty: {difficulty}', position=(0.85, 0.40), scale=1.5, color=color.lime)
+status_message = Text(text='', position=(0, 0.1), origin=(0,0), scale=2, color=color.yellow)
+diff_text = Text(text='', position=(0.85, 0.40), scale=1.5, color=color.lime)
 
 # UI 요소: 레이더 (좌측 하단)
 radar_base = Entity(parent=camera.ui, model='circle', color=color.black66, scale=0.2, position=(-0.7, -0.35))
@@ -122,16 +190,17 @@ class Player(Entity):
 
     def update(self):
         global game_state, timer
+        t = translations[current_lang]
 
         # 게임 타이머 로직
         if game_state == 'PLAYING':
             timer -= time.dt
-            timer_text.text = f'Time Left: {int(timer)}s'
+            timer_text.text = f"{t['timer']}: {int(timer)}s"
             status_message.text = ''
 
             if timer <= 0:
                 game_state = 'LOSE'
-                status_message.text = '시간 초과! 패배하였습니다. (R 키로 재도전)'
+                status_message.text = t['lose']
                 status_message.color = color.red
                 # 남아있는 모든 적기 제거
                 for e in enemies:
@@ -147,7 +216,7 @@ class Player(Entity):
         # 승리 판정
         if game_state == 'PLAYING' and len(active_enemies) == 0:
             game_state = 'WIN'
-            status_message.text = '임무 완수! 승리하였습니다! (R 키로 재도전)'
+            status_message.text = t['win']
             status_message.color = color.green
 
         # 가장 가까운 적 찾기
@@ -388,10 +457,60 @@ def request_enemy():
         enemies.append(Enemy(position=spawn_pos))
         print("적기가 눈앞에 나타났습니다! 60초 안에 격격추하세요.")
 
+def create_help_panel():
+    global help_panel
+    t = translations[current_lang]
+
+    if 'help_panel' in globals():
+        destroy(help_panel)
+
+    help_panel = WindowPanel(
+        title=t['manual_title'],
+        content=(
+            Text(t['controls']),
+            Text(t['mouse']),
+            Text(t['space']),
+            Text(t['pause_key']),
+            Text(t['diff_key']),
+            Text(t['bg_key']),
+            Text(''),
+            Text(t['rules']),
+            Text(t['rule1']),
+            Text(t['rule2']),
+            Text(''),
+            Text('Language / 언어:'),
+            ButtonGroup(('English', '한국어'), on_selection_changed=lambda i: save_language('en' if i==0 else 'ko')),
+            Text(''),
+            Text(t['diff_select'] + ':'),
+            ButtonGroup(('1','2','3','4','5','6','7','8','9','10'), on_selection_changed=lambda i: set_difficulty(i+1)),
+            Button(text=t['close'], color=color.azure, on_click=lambda: setattr(help_panel, 'enabled', False))
+        ),
+        enabled=False,
+        popup=True
+    )
+
+def update_ui_text():
+    t = translations[current_lang]
+    score_text.text = f"{t['score']}: {score}"
+    enemy_count_text.text = f"{t['enemies']}: {len([e for e in enemies if e and e.enabled])}"
+    diff_text.text = f"{t['diff_select']}: {difficulty}"
+    if game_state == 'WAITING':
+        status_message.text = t['call_enemy']
+    elif game_state == 'WIN':
+        status_message.text = t['win']
+    elif game_state == 'LOSE':
+        status_message.text = t['lose']
+    pause_text.text = t['paused']
+
+    # 설명서 재생성 (언어 변경 시 활성화 상태 유지)
+    if 'help_panel' in globals() and help_panel.enabled:
+        create_help_panel()
+        help_panel.enabled = True
+
 def set_difficulty(val):
     global difficulty
     difficulty = clamp(val, 1, 10)
-    diff_text.text = f'Difficulty: {difficulty}'
+    update_ui_text()
 
     # 버튼 색상 업데이트 (선택된 단계 강조)
     for i, btn in enumerate(diff_buttons):
@@ -407,9 +526,8 @@ def reset_game():
     game_state = 'WAITING'
     timer = 60
     score = 0
-    score_text.text = f'Score: {score}'
+    update_ui_text()
     timer_text.text = ''
-    status_message.text = 'SPACE 키를 눌러 적기를 호출하세요!'
     status_message.color = color.yellow
     for e in enemies:
         if e and e.enabled:
@@ -420,28 +538,9 @@ def reset_game():
 
 player = Player()
 
-# 게임 설명서 및 설정 버튼 (톱니바퀴)
-help_panel = WindowPanel(
-    title='게임 설명서 및 설정',
-    content=(
-        Text('조작 방법:'),
-        Text('- 마우스: 비행기 회전 / 왼쪽 클릭: 사격'),
-        Text('- SPACE: 적기 호출 / R: 초기화'),
-        Text('- P: 게임 일시정지/재개'),
-        Text('- 숫자키 1~0: 난이도 설정 (1:쉬움 ~ 10:매우어려움)'),
-        Text('- B: 배경 변경 / ESC: 종료'),
-        Text(''),
-        Text('게임 규칙:'),
-        Text('- 적기를 60초 안에 격추하면 승리합니다.'),
-        Text('- 난이도가 높을수록 적기가 더 빠르고 불규칙하게 회피합니다.'),
-        Text(''),
-        Text('난이도 조절 (현재 단계 선택):'),
-        ButtonGroup(('1','2','3','4','5','6','7','8','9','10'), on_selection_changed=lambda i: set_difficulty(i+1)),
-        Button(text='닫기', color=color.azure, on_click=lambda: setattr(help_panel, 'enabled', False))
-    ),
-    enabled=False,
-    popup=True
-)
+# 설명서 패널 초기 생성 및 UI 텍스트 동기화
+create_help_panel()
+update_ui_text()
 
 # 일시정지 상태 및 UI
 pause_handler = Entity(enabled=False)
