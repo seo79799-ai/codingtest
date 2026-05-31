@@ -427,6 +427,7 @@ help_panel = WindowPanel(
         Text('조작 방법:'),
         Text('- 마우스: 비행기 회전 / 왼쪽 클릭: 사격'),
         Text('- SPACE: 적기 호출 / R: 초기화'),
+        Text('- P: 게임 일시정지/재개'),
         Text('- 숫자키 1~0: 난이도 설정 (1:쉬움 ~ 10:매우어려움)'),
         Text('- B: 배경 변경 / ESC: 종료'),
         Text(''),
@@ -440,6 +441,25 @@ help_panel = WindowPanel(
     ),
     enabled=False,
     popup=True
+)
+
+# 일시정지 상태 및 UI
+pause_handler = Entity(enabled=False)
+pause_text = Text(parent=camera.ui, text='PAUSED', origin=(0,0), scale=3, color=color.yellow, enabled=False)
+
+def toggle_pause():
+    application.paused = not application.paused
+    pause_text.enabled = application.paused
+    mouse.locked = not application.paused
+    # 일시정지 중에는 설명서 버튼 등 다른 UI 클릭이 원활하도록 함
+    print("Game Paused" if application.paused else "Game Resumed")
+
+pause_button = Button(
+    text='||', # ⏸ 기호 대신 시각적인 바 형태 사용
+    color=color.black66,
+    scale=0.05,
+    position=(0.78, 0.45),
+    on_click=toggle_pause
 )
 
 gear_button = Button(
@@ -468,6 +488,8 @@ Text(parent=camera.ui, text='Difficulty Select', position=(0.78, 0.35), scale=1,
 def input(key):
     if key == 'escape':
         quit()
+    if key == 'p': # 일시정지 단축키
+        toggle_pause()
     if key == 'b': # 배경 변경 단축키
         change_background()
     if key == 'h': # 도움말 단축키
