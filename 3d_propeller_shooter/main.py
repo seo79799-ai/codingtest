@@ -122,6 +122,10 @@ timer_text = Text(text='', position=(0, 0.4), origin=(0,0), scale=2, color=color
 status_message = Text(text='', position=(0, 0.1), origin=(0,0), scale=2, color=color.yellow)
 diff_text = Text(text='', position=(0.85, 0.40), scale=1.5, color=color.lime)
 
+# 일시정지 상태 및 UI (함수에서 참조하기 위해 미리 정의)
+pause_handler = Entity(enabled=False)
+pause_text = Text(parent=camera.ui, text='PAUSED', origin=(0,0), scale=3, color=color.yellow, enabled=False)
+
 # UI 요소: 레이더 (좌측 하단)
 radar_base = Entity(parent=camera.ui, model='circle', color=color.black66, scale=0.2, position=(-0.7, -0.35))
 radar_scan = Entity(parent=radar_base, model='circle', color=color.green, scale=0.05) # 플레이어 표시
@@ -542,10 +546,6 @@ player = Player()
 create_help_panel()
 update_ui_text()
 
-# 일시정지 상태 및 UI
-pause_handler = Entity(enabled=False)
-pause_text = Text(parent=camera.ui, text='PAUSED', origin=(0,0), scale=3, color=color.yellow, enabled=False)
-
 def toggle_pause():
     application.paused = not application.paused
     pause_text.enabled = application.paused
@@ -569,7 +569,7 @@ gear_button = Button(
     on_click=lambda: setattr(help_panel, 'enabled', not help_panel.enabled)
 )
 
-# 화면 우측 난이도 퀵 버튼
+# 화면 우측 난이도 퀵 버튼 (함수에서 참조하기 위해 미리 정의)
 diff_buttons = []
 for i in range(1, 11):
     btn = Button(
