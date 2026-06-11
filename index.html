@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 정보 확인 서비스 (지도 포함)</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        .ui-container {
+            text-align: center;
+            background: white;
+            padding: 1.5rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            z-index: 10;
+        }
+        .device-selector {
+            margin-bottom: 1rem;
+        }
+        .device-selector label {
+            margin: 0 10px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+        #check-btn {
+            background-color: #4285F4;
+            color: white;
+            border: none;
+            padding: 1rem 1.5rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            max-width: 300px;
+            margin-bottom: 1rem;
+        }
+        #check-btn:hover {
+            background-color: #357ae8;
+        }
+        .result-area {
+            text-align: left;
+            font-size: 0.9rem;
+            max-width: 600px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-around;
+            border-top: 1px solid #eee;
+            padding-top: 0.5rem;
+        }
+        .result-item {
+            margin: 0 10px;
+        }
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+        #map {
+            flex-grow: 1;
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+<div class="ui-container">
+    <!-- 1. 상단 기기 선택 -->
+    <div class="device-selector">
+        <label><input type="radio" name="device" value="computer" checked> 컴퓨터 위치</label>
+        <label><input type="radio" name="device" value="mobile"> 휴대폰 위치</label>
+    </div>
+
+    <!-- 2. 확인 버튼 -->
+    <button id="check-btn">현재 위치 확인할까요?</button>
+
+    <!-- 3. 결과 표시 -->
+    <div class="result-area">
+        <div class="result-item">
+            <span class="label">도로명 주소:</span> <span id="address">결과 대기 중...</span>
+        </div>
+        <div class="result-item">
+            <span class="label">우편번호:</span> <span id="zipcode">결과 대기 중...</span>
+        </div>
+    </div>
+</div>
+
+<!-- 4. 하단 구글 맵 -->
+<div id="map"></div>
+
+<script>
+    const GOOGLE_MAPS_API_KEY = 'YOUR_GOOGLE_MAPS_API_KEY';
+
+    let map;
+    let marker;
+    let selectedLatLng = null;
+
+    const checkBtn = document.getElementById('check-btn');
+    const addressEl = document.getElementById('address');
+    const zipcodeEl = document.getElementById('zipcode');
+
+    /**
+     * 구글 맵 초기화
+     */
+    function initMap() {
+        // 기본 서울 시청 좌표
+        const defaultLocation = { lat: 37.5665, lng: 126.9780 };
+
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: defaultLocation,
+            zoom: 15,
+        });
+
+        marker = new google.maps.Marker({
+            map: map,
+            draggable: true
+        });
+
+        // 지도 클릭 시 마커 이동 및 좌표 저장
+        map.addListener('click', (event) => {
+            placeMarker(event.latLng);
+        });
+
+        // 마커 드래그 시 좌표 업데이트
+        marker.addListener('dragend', (event) => {
+            selectedLatLng = event.latLng;
+        });
+    }
+
+    function placeMarker(latLng) {
+        marker.setPosition(latLng);
+        selectedLatLng = latLng;
+    }
+
+    /**
+     * [단계별 설명]
+     * 1. 버튼 클릭 시, 마커가 이미 찍혀있다면 해당 좌표를 사용합니다.
+     * 2. 마커가 없다면 Geolocation API로 현재 위치를 먼저 가져옵니다.
+     * 3. 좌표를 확정한 후 Reverse Geocoding API를 호출하여 주소로 변환합니다.
+     * 4. 변환된 결과를 화면에 표시합니다.
+     */
+    checkBtn.addEventListener('click', async () => {
+        if (!selectedLatLng) {
+            // 마커를 클릭하지 않은 경우 현재 위치 수집 시도
+            if (!navigator.geolocation) {
+                alert('이 브라우저는 위치 정보를 지원하지 않습니다.');
+                return;
+            }
+
+            addressEl.innerText = '위치 찾는 중...';
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    const latLng = new google.maps.LatLng(lat, lng);
+
+                    map.setCenter(latLng);
+                    placeMarker(latLng);
+                    reverseGeocode(lat, lng);
+                },
+                (error) => {
+                    alert('위치 정보를 가져오는 데 실패했습니다.');
+                }
+            );
+        } else {
+            // 이미 마커로 위치를 선택한 경우
+            reverseGeocode(selectedLatLng.lat(), selectedLatLng.lng());
+        }
+    });
+
+    async function reverseGeocode(lat, lng) {
+        addressEl.innerText = '주소 변환 중...';
+        zipcodeEl.innerText = '...';
+
+        try {
+            const url = `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}&language=ko`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.status === 'OK') {
+                const results = data.results;
+                const address = results[0].formatted_address;
+
+                let postalCode = '정보 없음';
+                for (const component of results[0].address_components) {
+                    if (component.types.includes('postal_code')) {
+                        postalCode = component.long_name;
+                        break;
+                    }
+                }
+
+                addressEl.innerText = address;
+                zipcodeEl.innerText = postalCode;
+            } else {
+                addressEl.innerText = '주소를 찾을 수 없습니다.';
+            }
+        } catch (error) {
+            addressEl.innerText = '오류 발생';
+        }
+    }
+</script>
+
+<!-- 구글 맵 API 로드 -->
+<script async defer src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&callback=initMap"></script>
+
+</body>
+</html>

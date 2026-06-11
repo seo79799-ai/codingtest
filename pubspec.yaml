@@ -1,0 +1,21 @@
+name: simple_location_service
+description: A simple location service app that gathers GPS coordinates and converts them to road name addresses.
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  geolocator: ^10.1.0
+  http: ^1.1.0
+  google_maps_flutter: ^2.5.0 # 구글 맵 표시를 위한 패키지 추가
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.0
+
+flutter:
+  uses-material-design: true

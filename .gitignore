@@ -1,0 +1,9 @@
+# Flutter artifacts
+.dart_tool/
+build/
+
+# Logs
+*.log
+
+# Verification
+verification/
