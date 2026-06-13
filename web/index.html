@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>위치 정보 확인 서비스</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 400px;
+        }
+        .device-selection {
+            margin-bottom: 20px;
+        }
+        .main-button {
+            padding: 20px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            margin: 20px 0;
+        }
+        .main-button:hover {
+            background-color: #0056b3;
+        }
+        .result-area {
+            margin-top: 20px;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+        .result-item {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+    </style>
+    <!-- Google Maps JavaScript API 로드 (CORS 문제 해결을 위해 SDK 사용) -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&language=ko"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="device-selection">
+        <label>
+            <input type="radio" name="device" value="Computer" checked> 컴퓨터 위치
+        </label>
+        <label style="margin-left: 15px;">
+            <input type="radio" name="device" value="Mobile"> 휴대폰 위치
+        </label>
+    </div>
+
+    <button class="main-button" onclick="requestLocation()">현재 위치 확인할까요?</button>
+
+    <div id="result" class="result-area" style="display: none;">
+        <div class="result-item" id="addressLine">도로명 주소: [결과]</div>
+        <div class="result-item" id="zipCodeLine">우편번호: [결과]</div>
+    </div>
+</div>
+
+<script>
+    async function requestLocation() {
+        const consent = confirm("위치 정보를 수집하여 주소를 확인하시겠습니까?");
+        if (!consent) {
+            alert("위치 정보 수집에 동의하지 않으셨습니다.");
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            alert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+            return;
+        }
+
+        navigator.geolocation.getCurrentPosition(async (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            const deviceType = document.querySelector('input[name="device"]:checked').value;
+
+            // Google Maps Geocoder 객체 생성
+            const geocoder = new google.maps.Geocoder();
+            const latlng = { lat: lat, lng: lng };
+
+            geocoder.geocode({ location: latlng }, (results, status) => {
+                if (status === "OK") {
+                    if (results[0]) {
+                        const result = results[0];
+                        const address = result.formatted_address;
+                        let zipCode = "정보 없음";
+
+                        for (let component of result.address_components) {
+                            if (component.types.includes("postal_code")) {
+                                zipCode = component.long_name;
+                                break;
+                            }
+                        }
+
+                        document.getElementById('result').style.display = 'block';
+                        document.getElementById('addressLine').innerText = `도로명 주소: [${deviceType}] ${address}`;
+                        document.getElementById('zipCodeLine').innerText = `우편번호: ${zipCode}`;
+                    } else {
+                        alert("결과를 찾을 수 없습니다.");
+                    }
+                } else {
+                    alert("Geocoder 실패: " + status);
+                }
+            });
+        }, (error) => {
+            alert("위치 정보를 가져올 수 없습니다: " + error.message);
+        });
+    }
+</script>
+
+</body>
+</html>
