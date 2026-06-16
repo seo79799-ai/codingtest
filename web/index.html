@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>위치 정보 확인 서비스</title>
+    <style>
+        /* UI 스타일링: 단순함과 가독성 강조 */
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        .container {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+        }
+        .device-selection {
+            margin-bottom: 2.5rem;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        .device-selection label {
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        /* 큰 확인 버튼 스타일 */
+        #check-btn {
+            background-color: #007AFF;
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 1.4rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.3s;
+            width: 100%;
+            margin-bottom: 2rem;
+            font-weight: bold;
+        }
+        #check-btn:active { transform: scale(0.98); }
+        #check-btn:hover { background-color: #0056b3; }
+
+        /* 결과 표시 영역 */
+        .result-area {
+            text-align: left;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            border: 1px solid #dee2e6;
+        }
+        .result-item {
+            margin: 10px 0;
+            font-size: 1.1rem;
+            font-weight: 500;
+            color: #212529;
+            word-break: keep-all;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 1단계: 기기 선택 (라디오 버튼) -->
+    <div class="device-selection">
+        <label>
+            <input type="radio" name="device" value="컴퓨터 위치" checked> 컴퓨터 위치
+        </label>
+        <label>
+            <input type="radio" name="device" value="휴대폰 위치"> 휴대폰 위치
+        </label>
+    </div>
+
+    <!-- 2단계: 핵심 액션 버튼 -->
+    <button id="check-btn">현재 위치 확인할까요?</button>
+
+    <!-- 3단계: 결과 표시 텍스트 -->
+    <div class="result-area" id="result-area">
+        <div class="result-item" id="address">도로명 주소: </div>
+        <div class="result-item" id="zipcode">우편번호: </div>
+    </div>
+</div>
+
+<!-- Google Maps JavaScript API 로드 -->
+<script>
+    // 테스트 환경을 고려하여 이미 google 객체가 로드되어 있는지 확인 후 스크립트 추가
+    if (!window.google) {
+        const script = document.createElement('script');
+        // 'YOUR_GOOGLE_MAPS_API_KEY' 부분을 실제 발급받은 키로 교체해야 합니다.
+        script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&language=ko`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+    }
+
+    const checkBtn = document.getElementById('check-btn');
+    const addressDiv = document.getElementById('address');
+    const zipcodeDiv = document.getElementById('zipcode');
+
+    // 4단계: 위치 권한 요청 및 처리 로직
+    checkBtn.addEventListener('click', () => {
+        // 위치정보법 준수: 사용자에게 명시적인 동의를 구함
+        const userConsent = confirm("사용자의 현재 위치 정보를 수집하여 주소로 변환합니다. 동의하시겠습니까?");
+
+        if (userConsent) {
+            fetchLocation();
+        }
+    });
+
+    function fetchLocation() {
+        addressDiv.innerText = "도로명 주소: 로딩 중...";
+        zipcodeDiv.innerText = "우편번호: 로딩 중...";
+
+        // 5단계: 브라우저 Geolocation API 호출
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    reverseGeocode(lat, lng);
+                },
+                (error) => {
+                    alert("위치 정보를 가져오는 데 실패했습니다: " + error.message);
+                },
+                { enableHighAccuracy: true }
+            );
+        } else {
+            alert("이 브라우저는 위치 서비스를 지원하지 않습니다.");
+        }
+    }
+
+    // 6단계: Google Maps Geocoder를 이용한 주소 변환
+    function reverseGeocode(lat, lng) {
+        const geocoder = new google.maps.Geocoder();
+        const latlng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+        const deviceType = document.querySelector('input[name="device"]:checked').value;
+
+        geocoder.geocode({ location: latlng }, (results, status) => {
+            if (status === "OK") {
+                if (results[0]) {
+                    // 결과에서 주소와 우편번호 추출
+                    const formattedAddress = results[0].formatted_address;
+                    let postalCode = "검색 실패";
+
+                    // address_components 배열에서 우편번호(postal_code) 항목 탐색
+                    for (const component of results[0].address_components) {
+                        if (component.types.includes("postal_code")) {
+                            postalCode = component.long_name;
+                            break;
+                        }
+                    }
+
+                    // UI 업데이트: 요구사항에 맞게 출력 형식 지정
+                    addressDiv.innerHTML = `도로명 주소: [${deviceType}] ${formattedAddress}`;
+                    zipcodeDiv.innerHTML = `우편번호: ${postalCode}`;
+                } else {
+                    alert("주소 결과가 없습니다.");
+                }
+            } else {
+                alert("Geocoder 서비스 오류: " + status);
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
