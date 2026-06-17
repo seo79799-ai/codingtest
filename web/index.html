@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>위치 정보 확인 서비스</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .device-selection {
+            margin-bottom: 2rem;
+        }
+        .main-button {
+            padding: 1.5rem 3rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            background-color: #4285F4;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .main-button:hover {
+            background-color: #357ae8;
+        }
+        .result-area {
+            margin-top: 2rem;
+            font-size: 1.2rem;
+            line-height: 1.8;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 단계 1: 기기 선택 UI 구성 -->
+    <div class="device-selection">
+        <label>
+            <input type="radio" name="device" value="컴퓨터 위치" checked> 컴퓨터 위치
+        </label>
+        <label style="margin-left: 20px;">
+            <input type="radio" name="device" value="휴대폰 위치"> 휴대폰 위치
+        </label>
+    </div>
+
+    <!-- 단계 2: 위치 확인 버튼 구성 -->
+    <button class="main-button" onclick="getLocation()">현재 위치 확인할까요?</button>
+
+    <!-- 단계 3: 결과 표시 영역 -->
+    <div class="result-area" id="result">
+        <p id="address">도로명 주소: [결과]</p>
+        <p id="zipcode">우편번호: [결과]</p>
+    </div>
+</div>
+
+<!-- Google Maps API 로드 (API 키 플레이스홀더 포함) -->
+<script>
+    // 테스트 환경에서 google 객체가 이미 정의되어 있는지 확인 (모킹 지원)
+    if (typeof google === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&language=ko";
+        document.head.appendChild(script);
+    }
+</script>
+
+<script>
+    async function getLocation() {
+        // 단계 4: 위치 정보 접근 권한 동의 요청 (위치정보법 준수)
+        const consent = confirm("위치 정보를 수집하여 주소를 확인하시겠습니까?");
+        if (!consent) {
+            alert("위치 정보 접근이 거부되었습니다.");
+            return;
+        }
+
+        if (!navigator.geolocation) {
+            alert("이 브라우저는 위치 정보를 지원하지 않습니다.");
+            return;
+        }
+
+        // 단계 5: 브라우저 Geolocation API를 사용하여 좌표 수집
+        navigator.geolocation.getCurrentPosition(success, error);
+    }
+
+    function success(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+
+        // 단계 6: Google Maps Reverse Geocoding API를 사용하여 주소 변환
+        const geocoder = new google.maps.Geocoder();
+        const latlng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+
+        geocoder.geocode({ location: latlng }, (results, status) => {
+            if (status === "OK") {
+                if (results[0]) {
+                    // 선택된 기기 접두사 가져오기
+                    const deviceType = document.querySelector('input[name="device"]:checked').value;
+
+                    // 도로명 주소 및 우편번호 추출 (한국 주소 체계 고려)
+                    const formattedAddress = results[0].formatted_address;
+                    let postalCode = "정보 없음";
+
+                    for (const component of results[0].address_components) {
+                        if (component.types.includes("postal_code")) {
+                            postalCode = component.long_name;
+                            break;
+                        }
+                    }
+
+                    // 단계 7: 결과 화면 표시
+                    document.getElementById("address").innerText = `도로명 주소: [${deviceType}] ${formattedAddress}`;
+                    document.getElementById("zipcode").innerText = `우편번호: [${postalCode}]`;
+                } else {
+                    alert("결과를 찾을 수 없습니다.");
+                }
+            } else {
+                alert("Geocoder 실패: " + status);
+            }
+        });
+    }
+
+    function error() {
+        alert("위치 정보를 가져올 수 없습니다.");
+    }
+</script>
+
+</body>
+</html>
