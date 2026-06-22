@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 정보 확인 서비스</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            min-width: 350px;
+        }
+        .device-selection {
+            margin-bottom: 2rem;
+        }
+        .device-selection label {
+            margin: 0 0.5rem;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+        #check-btn {
+            font-size: 1.5rem;
+            padding: 1rem 2rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #check-btn:hover {
+            background-color: #0056b3;
+        }
+        #check-btn:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .result-area {
+            margin-top: 2rem;
+            font-size: 1.1rem;
+            line-height: 1.8;
+            text-align: left;
+            display: inline-block;
+            width: 100%;
+        }
+        .result-item {
+            font-weight: bold;
+            word-break: keep-all;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 1단계: 기기 선택 -->
+        <div class="device-selection">
+            <input type="radio" id="pc" name="device" value="컴퓨터 위치" checked>
+            <label for="pc">컴퓨터 위치</label>
+            <input type="radio" id="mobile" name="device" value="휴대폰 위치">
+            <label for="mobile">휴대폰 위치</label>
+        </div>
+
+        <!-- 2단계: 확인 버튼 -->
+        <button id="check-btn">현재 위치 확인할까요?</button>
+
+        <!-- 3단계: 결과 표시 -->
+        <div class="result-area" id="result-area" style="display: none;">
+            <div class="result-item">도로명 주소: <span id="address-val"></span></div>
+            <div class="result-item">우편번호: <span id="zip-val"></span></div>
+        </div>
+    </div>
+
+    <!-- Google Maps JavaScript API 로드 (callback 및 API KEY 설정 필요) -->
+    <!-- 테스트 환경에서는 window.google 객체를 모킹하여 사용하므로, 실제 서비스 시 KEY를 입력해야 함 -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&language=ko"></script>
+
+    <script>
+        const checkBtn = document.getElementById('check-btn');
+        const resultArea = document.getElementById('result-area');
+        const addressVal = document.getElementById('address-val');
+        const zipVal = document.getElementById('zip-val');
+
+        checkBtn.addEventListener('click', () => {
+            // 위치 정보 접근 권한 동의 확인 (브라우저 기본 팝업 트리거 전 안내)
+            if (confirm("위치 정보 수집 및 이용에 동의하십니까? (위치정보법 준수)")) {
+                getLocation();
+            }
+        });
+
+        function getLocation() {
+            if (!navigator.geolocation) {
+                alert("이 브라우저에서는 위치 정보를 지원하지 않습니다.");
+                return;
+            }
+
+            checkBtn.disabled = true;
+            checkBtn.innerText = "위치 확인 중...";
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+                    reverseGeocode(lat, lng);
+                },
+                (error) => {
+                    alert("위치 정보를 가져오는 데 실패했습니다: " + error.message);
+                    checkBtn.disabled = false;
+                    checkBtn.innerText = "현재 위치 확인할까요?";
+                }
+            );
+        }
+
+        function reverseGeocode(lat, lng) {
+            const geocoder = new google.maps.Geocoder();
+            const latlng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+
+            geocoder.geocode({ location: latlng }, (results, status) => {
+                if (status === "OK") {
+                    if (results[0]) {
+                        // 기기 선택에 따른 접두어 결정
+                        const devicePrefix = document.querySelector('input[name="device"]:checked').value;
+
+                        // 결과 표시
+                        addressVal.innerText = `[${devicePrefix}] ${results[0].formatted_address}`;
+
+                        // 우편번호 추출
+                        let postalCode = "정보 없음";
+                        for (let component of results[0].address_components) {
+                            if (component.types.includes("postal_code")) {
+                                postalCode = component.long_name;
+                                break;
+                            }
+                        }
+                        zipVal.innerText = postalCode;
+
+                        resultArea.style.display = "block";
+                    } else {
+                        alert("주소 결과를 찾을 수 없습니다.");
+                    }
+                } else {
+                    alert("Geocoder 실패: " + status);
+                }
+                checkBtn.disabled = false;
+                checkBtn.innerText = "현재 위치 확인할까요?";
+            });
+        }
+    </script>
+</body>
+</html>
