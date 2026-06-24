@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 확인 서비스</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f7f6;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 90%;
+            width: 400px;
+        }
+        .device-selection {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            font-size: 1.1rem;
+        }
+        .device-selection input {
+            cursor: pointer;
+        }
+        .device-selection label {
+            cursor: pointer;
+        }
+        .main-button {
+            padding: 20px 40px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            background-color: #007bff;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.1s, background-color 0.3s;
+            width: 100%;
+        }
+        .main-button:hover {
+            background-color: #0056b3;
+        }
+        .main-button:active {
+            transform: scale(0.98);
+        }
+        .result-area {
+            margin-top: 40px;
+            font-size: 1.2rem;
+            line-height: 1.8;
+            text-align: left;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+        .result-item {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 1단계: 기기 선택 UI 구성 (컴퓨터/휴대폰 위치 선택) -->
+        <div class="device-selection">
+            <div>
+                <input type="radio" id="computer" name="device" value="컴퓨터" checked>
+                <label for="computer">컴퓨터 위치</label>
+            </div>
+            <div>
+                <input type="radio" id="mobile" name="device" value="휴대폰">
+                <label for="mobile">휴대폰 위치</label>
+            </div>
+        </div>
+
+        <!-- 2단계: 핵심 확인 버튼 (크고 직관적인 디자인) -->
+        <button class="main-button" onclick="handleLocationCheck()">현재 위치 확인할까요?</button>
+
+        <!-- 3단계: 결과 표시 영역 (텍스트로 바로 나타나도록 구성) -->
+        <div class="result-area" id="result-area">
+            <div class="result-item" id="address">도로명 주소: [결과 대기 중]</div>
+            <div class="result-item" id="postcode">우편번호: [결과 대기 중]</div>
+        </div>
+    </div>
+
+    <!-- 구글 맵스 JavaScript API 로드 (필요한 경우 language=ko로 한국어 설정) -->
+    <!-- 실제 서비스 시 YOUR_GOOGLE_MAPS_API_KEY를 유효한 키로 교체해야 합니다. -->
+    <script>
+        // SDK 로드 로직 (테스트 모킹을 위해 window.google 체크)
+        if (!window.google) {
+            const script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&language=ko';
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+    </script>
+
+    <script>
+        /**
+         * 4단계: 위치 확인 버튼 클릭 시 실행되는 메인 로직
+         */
+        async function handleLocationCheck() {
+            // 위치 정보 접근 권한 동의 팝업 (위치정보법 준수)
+            const consent = confirm("현재 위치 정보를 수집하여 주소로 변환하시겠습니까?");
+
+            if (!consent) {
+                alert("위치 정보 활용에 동의하셔야 서비스 이용이 가능합니다.");
+                return;
+            }
+
+            // UI 초기화
+            document.getElementById("address").innerText = "도로명 주소: 위치를 찾는 중...";
+            document.getElementById("postcode").innerText = "우편번호: 확인 중...";
+
+            // 5단계: Geolocation API를 사용하여 위도, 경도 좌표 수집
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => convertCoordsToAddress(position.coords.latitude, position.coords.longitude),
+                    (error) => {
+                        alert("위치 정보를 가져오는 데 실패했습니다: " + error.message);
+                        resetUI();
+                    },
+                    { enableHighAccuracy: true, timeout: 5000, maximumAge: 0 }
+                );
+            } else {
+                alert("이 브라우저는 위치 정보를 지원하지 않습니다.");
+                resetUI();
+            }
+        }
+
+        /**
+         * 6단계: Google Reverse Geocoding API를 사용하여 주소 변환
+         */
+        function convertCoordsToAddress(lat, lng) {
+            const deviceType = document.querySelector('input[name="device"]:checked').value;
+            const geocoder = new google.maps.Geocoder();
+            const latlng = { lat: parseFloat(lat), lng: parseFloat(lng) };
+
+            geocoder.geocode({ location: latlng }, (results, status) => {
+                if (status === "OK" && results[0]) {
+                    // 결과에서 도로명 주소와 우편번호 추출
+                    const formattedAddress = results[0].formatted_address;
+                    let postalCode = "정보 없음";
+
+                    // address_components 배열에서 우편번호(postal_code) 검색
+                    for (const component of results[0].address_components) {
+                        if (component.types.includes("postal_code")) {
+                            postalCode = component.long_name;
+                            break;
+                        }
+                    }
+
+                    // 7단계: 최종 결과를 화면에 텍스트로 표시
+                    document.getElementById("address").innerText = `도로명 주소: [${deviceType} 위치] ${formattedAddress}`;
+                    document.getElementById("postcode").innerText = `우편번호: [${deviceType} 위치] ${postalCode}`;
+                } else {
+                    alert("주소 변환에 실패했습니다: " + status);
+                    resetUI();
+                }
+            });
+        }
+
+        function resetUI() {
+            document.getElementById("address").innerText = "도로명 주소: [결과 대기 중]";
+            document.getElementById("postcode").innerText = "우편번호: [결과 대기 중]";
+        }
+    </script>
+</body>
+</html>
