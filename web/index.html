@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 정보 확인 서비스</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 1단계: 기기 선택 UI (라디오 버튼) -->
+        <div class="device-selection">
+            <label>
+                <input type="radio" name="device" value="컴퓨터" checked> 컴퓨터 위치
+            </label>
+            <label>
+                <input type="radio" name="device" value="휴대폰"> 휴대폰 위치
+            </label>
+        </div>
+
+        <!-- 2단계: 메인 확인 버튼 -->
+        <div class="main-action">
+            <button id="getLocationBtn" class="big-button">현재 위치 확인할까요?</button>
+        </div>
+
+        <!-- 3단계: 결과 표시 영역 -->
+        <div id="resultArea" class="result-area">
+            <p id="roadAddress">도로명 주소: </p>
+            <p id="zipCode">우편번호: </p>
+        </div>
+    </div>
+
+    <!-- Google Maps JavaScript API 로드 (YOUR_GOOGLE_MAPS_API_KEY 부분은 실제 키로 대체 필요) -->
+    <!-- window.google 객체 존재 여부를 확인하여 테스트 시 모킹을 용이하게 함 -->
+    <script>
+        if (!window.google) {
+            const script = document.createElement('script');
+            script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places&language=ko`;
+            script.async = true;
+            script.defer = true;
+            document.head.appendChild(script);
+        }
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>

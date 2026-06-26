@@ -1,0 +1,66 @@
+body {
+    font-family: 'Malgun Gothic', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f4f7f6;
+}
+
+.container {
+    text-align: center;
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    width: 90%;
+    max-width: 400px;
+}
+
+.device-selection {
+    margin-bottom: 2rem;
+}
+
+.device-selection label {
+    margin: 0 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.main-action {
+    margin-bottom: 2rem;
+}
+
+.big-button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.big-button:hover {
+    background-color: #45a049;
+    transform: scale(1.05);
+}
+
+.big-button:active {
+    transform: scale(0.95);
+}
+
+.result-area {
+    margin-top: 1rem;
+    padding: 1rem;
+    border-top: 1px solid #eee;
+    text-align: left;
+}
+
+.result-area p {
+    font-size: 1.1rem;
+    margin: 10px 0;
+    color: #333;
+}
