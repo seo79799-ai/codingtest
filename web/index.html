@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 정보 확인 서비스</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 400px;
+        }
+        .device-selector {
+            margin-bottom: 2rem;
+        }
+        .check-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 1.5rem 2rem;
+            font-size: 1.5rem;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+            font-weight: bold;
+        }
+        .check-button:hover {
+            background-color: #0056b3;
+        }
+        .result-area {
+            margin-top: 2rem;
+            text-align: left;
+        }
+        .result-item {
+            font-size: 1.1rem;
+            margin: 0.5rem 0;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 기기 선택: 라디오 버튼 -->
+        <div class="device-selector">
+            <label>
+                <input type="radio" name="device" value="computer" checked> 컴퓨터 위치
+            </label>
+            <label style="margin-left: 1rem;">
+                <input type="radio" name="device" value="mobile"> 휴대폰 위치
+            </label>
+        </div>
+
+        <!-- 확인 버튼: 큰 버튼 -->
+        <button id="checkLocationBtn" class="check-button">현재 위치 확인할까요?</button>
+
+        <!-- 결과 표시: 텍스트 -->
+        <div class="result-area">
+            <div id="addressResult" class="result-item">도로명 주소: [결과 기다림]</div>
+            <div id="zipcodeResult" class="result-item">우편번호: [결과 기다림]</div>
+            <div id="errorMsg" class="error"></div>
+        </div>
+    </div>
+
+    <!-- Google Maps API (API KEY는 나중에 실제 키로 대체 필요) -->
+    <script>
+        // Google Maps SDK가 로드되었는지 확인하고 로드되지 않았다면 동적으로 추가
+        // 테스트 환경에서 window.google을 모킹하기 쉽게 하기 위함
+        (function() {
+            if (!window.google) {
+                const script = document.createElement('script');
+                script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=geometry&language=ko`;
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+            }
+        })();
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
