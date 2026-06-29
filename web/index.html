@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>위치 정보 확인 서비스</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f4f4f9;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .device-selector {
+            margin-bottom: 2rem;
+        }
+        .main-button {
+            padding: 1.5rem 3rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            background-color: #4CAF50;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .main-button:hover {
+            background-color: #45a049;
+        }
+        .result-area {
+            margin-top: 2rem;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+        .result-item {
+            margin: 0.5rem 0;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <!-- 1단계: 기기 선택 UI (라디오 버튼) -->
+        <div class="device-selector">
+            <label>
+                <input type="radio" name="device" value="computer" checked> 컴퓨터 위치
+            </label>
+            <label style="margin-left: 20px;">
+                <input type="radio" name="device" value="mobile"> 휴대폰 위치
+            </label>
+        </div>
+
+        <!-- 2단계: 메인 확인 버튼 -->
+        <button id="checkLocationBtn" class="main-button">현재 위치 확인할까요?</button>
+
+        <!-- 3단계: 결과 표시 영역 -->
+        <div class="result-area">
+            <div class="result-item" id="addressResult">도로명 주소: </div>
+            <div class="result-item" id="zipCodeResult">우편번호: </div>
+        </div>
+    </div>
+
+    <!-- Google Maps API 로더 (window.google이 없을 때만 추가 - 테스트 용이성) -->
+    <script>
+        if (!window.google) {
+            const script = document.createElement('script');
+            // YOUR_GOOGLE_MAPS_API_KEY 부분을 실제 키로 대체해야 합니다.
+            script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&libraries=places&language=ko`;
+            script.async = true;
+            document.head.appendChild(script);
+        }
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
