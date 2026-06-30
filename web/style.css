@@ -1,0 +1,66 @@
+body {
+    font-family: 'Malgun Gothic', sans-serif;
+    background-color: #f4f7f6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.container {
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    text-align: center;
+    width: 90%;
+    max-width: 400px;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 2rem;
+}
+
+.device-selection {
+    margin-bottom: 2rem;
+    display: flex;
+    justify-content: space-around;
+}
+
+.device-selection label {
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.main-btn {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    padding: 1.5rem 2rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+    width: 100%;
+}
+
+.main-btn:active {
+    transform: scale(0.95);
+    background-color: #45a049;
+}
+
+.result-area {
+    margin-top: 2rem;
+    text-align: left;
+    padding: 1rem;
+    background-color: #e8f5e9;
+    border-radius: 10px;
+}
+
+.result-area p {
+    margin: 0.5rem 0;
+    color: #2e7d32;
+}
