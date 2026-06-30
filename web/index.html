@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 확인 서비스</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>위치 정보 확인</h1>
+
+        <!-- 단계 1: 기기 선택 UI -->
+        <div class="device-selection">
+            <label>
+                <input type="radio" name="device" value="컴퓨터" checked> 컴퓨터 위치
+            </label>
+            <label>
+                <input type="radio" name="device" value="휴대폰"> 휴대폰 위치
+            </label>
+        </div>
+
+        <!-- 단계 2: 위치 확인 실행 버튼 -->
+        <div class="action-section">
+            <button id="getLocationBtn" class="main-btn">현재 위치 확인할까요?</button>
+        </div>
+
+        <!-- 단계 3: 결과 표시 영역 -->
+        <div id="result" class="result-area">
+            <p><strong>도로명 주소:</strong> <span id="address">-</span></p>
+            <p><strong>우편번호:</strong> <span id="zipcode">-</span></p>
+        </div>
+    </div>
+
+    <!-- Google Maps API (API 키 필요) -->
+    <!-- window.google이 없을 때만 스크립트를 추가하도록 script.js에서 처리하거나 직접 추가 -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_GOOGLE_MAPS_API_KEY&language=ko"></script>
+    <script src="script.js"></script>
+</body>
+</html>
