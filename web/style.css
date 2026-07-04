@@ -1,0 +1,76 @@
+body {
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+    background-color: #f4f7f6;
+}
+
+.container {
+    text-align: center;
+    background: white;
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    width: 90%;
+    max-width: 400px;
+}
+
+h1 {
+    color: #333;
+    margin-bottom: 2rem;
+}
+
+.device-selection {
+    margin-bottom: 2rem;
+}
+
+.device-selection label {
+    margin: 0 10px;
+    font-size: 1.1rem;
+    cursor: pointer;
+}
+
+.action-area {
+    margin-bottom: 2rem;
+}
+
+#checkLocationBtn {
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    color: white;
+    background-color: #007bff;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+#checkLocationBtn:hover {
+    background-color: #0056b3;
+    transform: scale(1.05);
+}
+
+#checkLocationBtn:active {
+    transform: scale(0.95);
+}
+
+.result-area {
+    padding: 1rem;
+    border-top: 1px solid #eee;
+    text-align: left;
+}
+
+.result-area p {
+    font-size: 1rem;
+    color: #555;
+    margin: 10px 0;
+}
+
+.result-area span {
+    font-weight: bold;
+    color: #000;
+}
