@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 정보 확인 서비스</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- 1단계: 기기 선택 UI (라디오 버튼) -->
+        <div class="device-selection">
+            <label>
+                <input type="radio" name="device" value="computer" checked> 컴퓨터 위치
+            </label>
+            <label>
+                <input type="radio" name="device" value="mobile"> 휴대폰 위치
+            </label>
+        </div>
+
+        <!-- 2단계: 메인 액션 버튼 -->
+        <div class="main-action">
+            <button id="getLocationBtn" class="big-button">현재 위치 확인할까요?</button>
+        </div>
+
+        <!-- 3단계: 결과 표시 영역 -->
+        <div id="resultArea" class="result-area" style="display: none;">
+            <p id="roadAddress">도로명 주소: [결과]</p>
+            <p id="zipCode">우편번호: [결과]</p>
+        </div>
+    </div>
+
+    <!-- 4단계: 위치 정보 제공 동의 팝업 (모달) -->
+    <div id="consentModal" class="modal">
+        <div class="modal-content">
+            <h3>위치 정보 이용 동의</h3>
+            <p>본 서비스는 현재 위치의 도로명 주소와 우편번호를 안내하기 위해 사용자의 위치 정보를 수집합니다. 이에 동의하십니까?</p>
+            <div class="modal-buttons">
+                <button id="agreeBtn">동의함</button>
+                <button id="denyBtn">동의하지 않음</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Google Maps API 로드: YOUR_API_KEY 부분을 실제 구글 맵스 API 키로 교체해야 합니다. -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&language=ko"></script>
+    <script src="script.js"></script>
+</body>
+</html>
