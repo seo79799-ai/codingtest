@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 확인 서비스</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>위치 정보 확인</h1>
+
+        <!-- 기기 선택: 라디오 버튼 -->
+        <div class="device-selection">
+            <label>
+                <input type="radio" name="device" value="computer" checked> 컴퓨터 위치
+            </label>
+            <label>
+                <input type="radio" name="device" value="mobile"> 휴대폰 위치
+            </label>
+        </div>
+
+        <!-- 확인 버튼: 중앙에 크게 배치 -->
+        <div class="action-area">
+            <button id="getLocationBtn">현재 위치 확인할까요?</button>
+        </div>
+
+        <!-- 결과 표시: 하단에 텍스트로 나타남 -->
+        <div id="resultArea" class="result-area" style="display: none;">
+            <p id="deviceLabel" style="font-weight: bold; color: #555;"></p>
+            <p><strong>도로명 주소:</strong> <span id="address">-</span></p>
+            <p><strong>우편번호:</strong> <span id="zipcode">-</span></p>
+        </div>
+    </div>
+
+    <!-- Google Maps API 로더 -->
+    <script>
+        (function() {
+            // 테스트 환경에서의 모킹을 위해 window.google 체크
+            if (!window.google) {
+                const script = document.createElement('script');
+                // 실제 사용 시 YOUR_API_KEY 부분을 발급받은 키로 교체해야 합니다.
+                script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&language=ko`;
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+            }
+        })();
+    </script>
+    <script src="script.js"></script>
+</body>
+</html>
