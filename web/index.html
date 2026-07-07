@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>단순 위치 확인 서비스</title>
+    <style>
+        body {
+            font-family: 'Malgun Gothic', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        .device-selection {
+            margin-bottom: 2rem;
+        }
+        .device-selection label {
+            margin: 0 10px;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+        #check-location-btn {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 1.5rem 2rem;
+            font-size: 1.25rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            width: 100%;
+            margin-bottom: 2rem;
+        }
+        #check-location-btn:hover {
+            background-color: #0056b3;
+        }
+        .result-area {
+            text-align: left;
+            background-color: #f8f9fa;
+            padding: 1rem;
+            border-radius: 10px;
+            min-height: 80px;
+        }
+        .result-item {
+            margin: 10px 0;
+            font-size: 1rem;
+            line-height: 1.4;
+        }
+        .label {
+            font-weight: bold;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 단계 1: 기기 선택 UI 구성 -->
+    <div class="device-selection">
+        <label>
+            <input type="radio" name="device" value="컴퓨터" checked> 컴퓨터 위치
+        </label>
+        <label>
+            <input type="radio" name="device" value="휴대폰"> 휴대폰 위치
+        </label>
+    </div>
+
+    <!-- 단계 2: 위치 확인 버튼 구성 (중심에 큰 버튼) -->
+    <button id="check-location-btn">현재 위치 확인할까요?</button>
+
+    <!-- 단계 3: 결과 표시 영역 -->
+    <div class="result-area" id="result-area">
+        <div class="result-item">
+            <span class="label">도로명 주소:</span> <span id="address">-</span>
+        </div>
+        <div class="result-item">
+            <span class="label">우편번호:</span> <span id="zipcode">-</span>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+<!-- 단계 4: Google Maps API 로드 (테스트 시 모킹을 위해 window.google 체크) -->
+<script>
+    if (!window.google) {
+        const script = document.createElement('script');
+        // 실제 운영 시 YOUR_API_KEY를 입력해야 합니다.
+        script.src = `https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&language=ko`;
+        script.async = true;
+        script.defer = true;
+        document.head.appendChild(script);
+    }
+</script>
+
+</body>
+</html>
